@@ -23,20 +23,13 @@ class ClientFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        $now = new \DateTime();
-
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
-            $dateCreated = $this->faker->dateTimeBetween('-1 year', 'now');
-            $dateUpdated = $this->faker->dateTimeBetween($dateCreated, $now);
-
             $client = new Client();
-            $client
-                ->setQuantity((string) $this->faker->numberBetween(1, 1000))
-                ->setCreatedAt($dateCreated)
-                ->setUpdatedAt($dateUpdated)
-                ->setStatus($this->faker->randomElement(['active', 'inactive']))
-                ->setPrice((string) $this->faker->randomFloat(2, 10, 1000))
-                ->setPriceUnit($this->faker->randomElement(['EUR', 'USD', 'GBP']));
+            $client->setName($this->faker->company);
+            $createdAt = $this->faker->dateTimeBetween('-2 years', 'now');
+            $client->setCreatedAt($createdAt);
+            $client->setUpdatedAt($this->faker->dateTimeBetween($createdAt, 'now'));
+            $client->setStatus($this->faker->randomElement(['on', 'off']));
 
             $manager->persist($client);
 
@@ -46,3 +39,4 @@ class ClientFixtures extends Fixture
         $manager->flush();
     }
 }
+
