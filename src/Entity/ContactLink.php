@@ -17,9 +17,6 @@ class ContactLink
     #[ORM\Column(length: 255)]
     private ?string $value = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $type = null;
-
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
@@ -42,18 +39,6 @@ class ContactLink
     public function setValue(string $value): static
     {
         $this->value = $value;
-
-        return $this;
-    }
-
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-
-    public function setType(string $type): static
-    {
-        $this->type = $type;
 
         return $this;
     }
