@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: FacturationModelRepository::class)]
 class FacturationModel
 {
-    use StaticEntityTrait;
+    use StatisticsPropertiesTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
