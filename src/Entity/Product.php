@@ -26,6 +26,10 @@ class Product
     #[ORM\Column]
     private ?float $priceUnit = null;
 
+    #[ORM\ManyToOne(inversedBy: 'products')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?ProductType $type = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -63,6 +67,18 @@ class Product
     public function setPriceUnit(float $priceUnit): static
     {
         $this->priceUnit = $priceUnit;
+
+        return $this;
+    }
+
+    public function getType(): ?ProductType
+    {
+        return $this->type;
+    }
+
+    public function setType(?ProductType $type): static
+    {
+        $this->type = $type;
 
         return $this;
     }
