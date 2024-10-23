@@ -24,6 +24,10 @@ class Info
     #[ORM\Column(length: 255)]
     private ?string $info = null;
 
+    #[ORM\ManyToOne(inversedBy: 'infos')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?InfoType $type = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -49,6 +53,18 @@ class Info
     public function setInfo(string $info): static
     {
         $this->info = $info;
+
+        return $this;
+    }
+
+    public function getType(): ?InfoType
+    {
+        return $this->type;
+    }
+
+    public function setType(?InfoType $type): static
+    {
+        $this->type = $type;
 
         return $this;
     }
