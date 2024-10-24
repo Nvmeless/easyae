@@ -29,7 +29,6 @@ class AccountFixtures extends Fixture implements DependentFixtureInterface
             $clientRefs[] = $prefixClient . $i;
         }
 
-
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
             $dateCreated = $this->faker->dateTimeInInterval('-1 year', '+1 year');
             $dateUpdated = $this->faker->dateTimeBetween($dateCreated, $now);
@@ -46,7 +45,6 @@ class AccountFixtures extends Fixture implements DependentFixtureInterface
             $this->addReference(self::PREFIX . $i, $account);
         }
 
-
         $manager->flush();
     }
 
@@ -56,6 +54,4 @@ class AccountFixtures extends Fixture implements DependentFixtureInterface
             ClientFixtures::class
         ];
     }
-
-
 }

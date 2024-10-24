@@ -8,6 +8,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ContratRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 class Contrat
 {
 
@@ -37,6 +38,9 @@ class Contrat
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $endAt = null;
+
+    #[ORM\OneToOne(mappedBy: 'Contrat')]
+    private ?Facturation $facturation = null;
 
     public function getId(): ?int
     {
@@ -123,6 +127,23 @@ class Contrat
     public function setEndAt(\DateTimeInterface $endAt): static
     {
         $this->endAt = $endAt;
+
+        return $this;
+    }
+
+    public function getFacturation(): ?Facturation
+    {
+        return $this->facturation;
+    }
+
+    public function setFacturation(Facturation $facturation): static
+    {
+        // set the owning side of the relation if necessary
+        if ($facturation->getContrat() !== $this) {
+            $facturation->setContrat($this);
+        }
+
+        $this->facturation = $facturation;
 
         return $this;
     }
