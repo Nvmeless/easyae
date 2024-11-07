@@ -11,6 +11,7 @@ use Faker\Generator;
 class ActionFixtures extends Fixture
 { 
     public const PREFIX = "action#";
+    public const actionNames = ['create', 'update', 'delete', 'read'];
     private Generator $faker;
     public function __construct()
     {
@@ -19,10 +20,9 @@ class ActionFixtures extends Fixture
     public function load(ObjectManager $manager): void
     { 
         $now = new \DateTime();
-        $actionNames = ['create', 'update', 'delete', 'read'];
 
         
-        foreach ($actionNames as $name) {
+        foreach (self::actionNames as $name) {
             
             $dateCreated = $this->faker->dateTimeInInterval('-1 year', '+1 year');
             $dateUpdated = $this->faker->dateTimeBetween($dateCreated, $now);
@@ -33,7 +33,8 @@ class ActionFixtures extends Fixture
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus('on')
             ;
-            $manager->persist($action); 
+            $manager->persist($action);
+            $this->addReference(self::PREFIX . $name, $action);
         }
         
 

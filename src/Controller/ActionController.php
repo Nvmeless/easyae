@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -25,20 +26,17 @@ class ActionController extends AbstractController
         $idCache = "getAllAction";
         $actionJson = $cache->get($idCache, function (ItemInterface $item) use ($actionRepository, $serializer) {
             $item->tag("action");
+
             $actionList = $actionRepository->findAll();
-            $actionJson = $serializer->serialize($actionList, 'json', ['groups' => "action"]);
-            return $actionJson;
+            return $serializer->serialize($actionList, 'json', ['groups' => "action"]);
         });
-        return new JsonResponse($actionJson, JsonResponse::HTTP_OK, [], true);
+
+        return new JsonResponse($actionJson, Response::HTTP_OK, [], true);
     }
 
     #[Route(path: '/{id}', name: 'api_action_show', methods: ["GET"])]
-    public function get(Action $action = null, SerializerInterface $serializer): JsonResponse
+    public function get(Action $action, SerializerInterface $serializer): JsonResponse
     {
-        if (!$action) {
-            return new JsonResponse(['error' => 'action not found'], JsonResponse::HTTP_NOT_FOUND);
-        }
-
         $actionJson = $serializer->serialize($action, 'json', ['groups' => ["action"]]);
         return new JsonResponse($actionJson, JsonResponse::HTTP_OK, [], true);
     }

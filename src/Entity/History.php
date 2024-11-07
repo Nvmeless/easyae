@@ -2,9 +2,6 @@
 
 namespace App\Entity;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\HistoryRepository;
 use App\Entity\Traits\StatisticsPropertiesTrait;
@@ -21,19 +18,40 @@ class History
     #[ORM\Column]
     private ?int $id = null;
 
-    /**
-     * @var Collection<int, Action>
-     */
-    #[ORM\ManyToMany(targetEntity: Action::class, mappedBy: 'history')]
-    private Collection $actions;
+    #[ORM\ManyToOne(inversedBy: 'histories')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Service $service = null;
 
-    public function __construct()
-    {
-        $this->actions = new ArrayCollection();
-    }
+    #[ORM\ManyToOne(inversedBy: 'histories')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Action $action = null;
 
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getService(): ?Service
+    {
+        return $this->service;
+    }
+
+    public function setService(?Service $service): static
+    {
+        $this->service = $service;
+
+        return $this;
+    }
+
+    public function getAction(): ?Action
+    {
+        return $this->action;
+    }
+
+    public function setAction(?Action $action): static
+    {
+        $this->action = $action;
+
+        return $this;
     }
 }
