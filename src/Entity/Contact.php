@@ -22,7 +22,7 @@ class Contact
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['client'])]
+    #[Groups(['client', 'contact'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 15)]

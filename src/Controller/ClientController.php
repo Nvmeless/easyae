@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Client;
 use App\Repository\ClientRepository;
+use App\Repository\ContactRepository;
 use App\Repository\FacturationModelRepository;
 use App\Repository\AccountRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -62,6 +63,14 @@ class ClientController extends AbstractController
 
         $clientJson = $serializer->serialize($client, 'json', ['groups' => ["client"]]);
         return new JsonResponse($clientJson, JsonResponse::HTTP_OK, [], true);
+    }
+
+    #[Route(path: '/{id}/carnet-contact', name: 'api_client_carnet_contact', methods: ["GET"])]
+    public function getCarnetContact(Client $client = null, SerializerInterface $serializer, ContactRepository $contactRepository) {
+        $contactsList = $contactRepository->findBy(['client' => $client->getId()]);
+        $contactsJson = $serializer->serialize($contactsList, 'json', ['groups' => ["contact"]]);
+
+        return new JsonResponse($contactsJson, JsonResponse::HTTP_OK, [], true);
     }
 
     #[Route(path: '/{id}/contrats', name: 'api_client_show_Contrats', methods: ["GET"])]
