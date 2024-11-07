@@ -38,10 +38,11 @@ class ClientController extends AbstractController
     }
 
     #[Route(path: '/{id}/carnet-account', name: 'api_client_carnet_account', methods: ["GET"])]
-    public function getCarnetAccount(Client $client = null, SerializerInterface $serializer, AccountRepository $accountRepository) {
+    public function getCarnetAccount(Client $client = null, SerializerInterface $serializer, AccountRepository $accountRepository)
+    {
         $accountsList = $accountRepository->findBy(['client' => $client->getId()]);
         $accountsJson = $serializer->serialize($accountsList, 'json', ['groups' => ["account"]]);
-        
+
         return new JsonResponse($accountsJson, JsonResponse::HTTP_OK, [], true);
     }
 
@@ -66,6 +67,17 @@ class ClientController extends AbstractController
 
     #[Route(path: '/{id}/contrats', name: 'api_client_show_Contrats', methods: ["GET"])]
     public function getContrats(Client $client = null, SerializerInterface $serializer): JsonResponse
+    {
+        if (!$client) {
+            return new JsonResponse(['error' => 'Client not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        $clientJson = $serializer->serialize($client->getContrats(), 'json', ['groups' => ["client"]]);
+        return new JsonResponse($clientJson, JsonResponse::HTTP_OK, [], true);
+    }
+
+    #[Route(path: '/{id}/all-contrat', name: 'api_client_all_contrat', methods: ["GET"])]
+    public function getAllContrats(Client $client = null, SerializerInterface $serializer): JsonResponse
     {
         if (!$client) {
             return new JsonResponse(['error' => 'Client not found'], JsonResponse::HTTP_NOT_FOUND);
@@ -119,7 +131,7 @@ class ClientController extends AbstractController
 
 
     #[Route(path: "/update_facturation_model/{id}", name: 'update_client_facturationModel', methods: ["POST"])]
-    public function updateFacturationModel(Client $client,FacturationModelRepository $modelRepository, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+    public function updateFacturationModel(Client $client, FacturationModelRepository $modelRepository, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
         $data = $request->toArray();
 
