@@ -2,23 +2,25 @@
 
 namespace App\Controller;
 
-use App\Repository\ContratTypeRepository;
-use App\Repository\ClientRepository;
-use App\Entity\Contrat;
-use App\Repository\ContratRepository;
 use DateTime;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Routing\Attribute\Route;
+use App\Entity\User;
+use App\Entity\Contrat;
+use App\Service\DeleteService;
+use App\Repository\UserRepository;
+use App\Repository\ClientRepository;
+use App\Repository\ContratRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Repository\ContratTypeRepository;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-use Symfony\Contracts\Cache\ItemInterface;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Bundle\SecurityBundle\Security;
-use App\Service\DeleteService;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 #[Route('/api/contrat')]
 class ContratController extends AbstractController
@@ -49,6 +51,16 @@ class ContratController extends AbstractController
 
         return new JsonResponse($contratJson, JsonResponse::HTTP_OK, [], true);
     }
+
+    #[Route(path: '/{userId}/contrat-user', name: 'api_all_contrat_user', methods: ["GET"])]
+    public function getAllContratsByUser(string $userId = null, SerializerInterface $serializer, ContratRepository $contratRepository) {
+        $contratList = $contratRepository->findBy(['createdBy' => $userId]);
+        $contratJson = $serializer->serialize($contratList, 'json', ['groups'=> ["contrat"]]);
+        
+        return new JsonResponse($contratJson, JsonResponse::HTTP_OK, [], true);
+    }
+
+    
 
     #[Route(path: "/{id}", name: 'api_contrat_show', methods: ["GET"])]
     public function get(Contrat $contrat, SerializerInterface $serializer): JsonResponse

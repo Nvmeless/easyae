@@ -19,7 +19,7 @@ class Client
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['contrat', 'client', 'info'])]
+    #[Groups(['contrat', 'client', 'info', 'account'])]
 
     private ?int $id = null;
 

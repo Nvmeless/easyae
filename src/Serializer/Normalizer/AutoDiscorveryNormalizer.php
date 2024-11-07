@@ -24,7 +24,6 @@ class AutoDiscorveryNormalizer implements NormalizerInterface
         $data = $this->normalizer->normalize($object, $format, $context);
         $className = (new ReflectionClass($object))->getShortName();
         $className = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $className));
-        // TODO: add, edit, or delete some data
         $data["_links"] = [
             "up" => [
                 "path" => $this->urlGenerator->generate("api_" . $className . "_index"),
