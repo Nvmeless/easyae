@@ -24,6 +24,7 @@ class ClientFixtures extends Fixture implements DependentFixtureInterface
 
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $facturationModelRefs = [];
         
         for ($i = FacturationModelFixtures::POOL_MIN; $i < FacturationModelFixtures::POOL_MAX; $i++) {
@@ -48,7 +49,8 @@ class ClientFixtures extends Fixture implements DependentFixtureInterface
             $client->setCreatedAt($createdAt);
             $client->setUpdatedAt($this->faker->dateTimeBetween($createdAt, 'now'));
             $client->setStatus($this->faker->randomElement(['on', 'off']));
-
+            $client->setCreatedBy($adminUser->getId());
+            $client->setUpdatedBy($adminUser->getId());
             $client->setStatus('on');
 
             if ($facturationModelCount > 0) {
@@ -73,6 +75,7 @@ class ClientFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
+            UserFixtures::class,
             FacturationModelFixtures::class,
             ContactFixtures::class,
         ];

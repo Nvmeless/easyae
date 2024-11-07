@@ -23,6 +23,7 @@ class InfoFixtures extends Fixture implements DependentFixtureInterface
     }
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
         $prefixInfo = InfoTypeFixtures::PREFIX;
 
@@ -57,6 +58,8 @@ class InfoFixtures extends Fixture implements DependentFixtureInterface
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus($this->faker->boolean() ? "on" : "off")
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
                 ->setUser($user);
             $manager->persist($info);
             $this->addReference(self::PREFIX . $i, $info);
@@ -68,6 +71,7 @@ class InfoFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
+            UserFixtures::class,
             InfoTypeFixtures::class,
             ClientFixtures::class,
             AccountFixtures::class,

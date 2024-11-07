@@ -17,12 +17,19 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 use App\Service\DeleteService;
 
 #[Route('/api/contrat')]
-
 class ContratController extends AbstractController
 {
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
+
     #[Route(name: 'api_contrat_index', methods: ["GET"])]
     public function getAll(ContratRepository $contratRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
@@ -40,14 +47,12 @@ class ContratController extends AbstractController
             return $contratJson;
         });
 
-
         return new JsonResponse($contratJson, JsonResponse::HTTP_OK, [], true);
     }
 
     #[Route(path: "/{id}", name: 'api_contrat_show', methods: ["GET"])]
     public function get(Contrat $contrat, SerializerInterface $serializer): JsonResponse
     {
-
         $contratJson = $serializer->serialize($contrat, 'json', ['groups' => "contrat"]);
 
         return new JsonResponse($contratJson, JsonResponse::HTTP_OK, [], true);
@@ -56,6 +61,10 @@ class ContratController extends AbstractController
     #[Route(name: 'api_contrat_new', methods: ["POST"])]
     public function create(Request $request, clientRepository $clientRepository, ContratTypeRepository $typeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         $contrat = $serializer->deserialize($request->getContent(), Contrat::class, 'json', []);
         $client = $clientRepository->find($data["client"]);
@@ -69,6 +78,8 @@ class ContratController extends AbstractController
             ->setStartAt($start)
             ->setEndAt($end)
             ->setStatus("on")
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
         ;
         $entityManager->persist($contrat);
         $entityManager->flush();
@@ -80,6 +91,10 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_edit', methods: ["PATCH"])]
     public function update(Contrat $contrat, UrlGeneratorInterface $urlGenerator, Request $request, clientRepository $clientRepository, ContratTypeRepository $typeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+         
         $data = $request->toArray();
         if (isset($data['client'])) {
             $client = $clientRepository->find($data["client"]);
@@ -103,6 +118,7 @@ class ContratController extends AbstractController
             ->setStartAt($start ?? $updatedContrat->getStartAt())
             ->setEndAt($end ?? $updatedContrat->getEndAt())
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
         $entityManager->persist($contrat);
         $entityManager->flush();
@@ -114,6 +130,10 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_delete', methods: ["DELETE"])]
     public function delete(Contrat $contrat, Request $request, DeleteService $deleteService): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         return $deleteService->deleteEntity($contrat, $data, 'contrat');
     }

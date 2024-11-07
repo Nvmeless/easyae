@@ -27,6 +27,7 @@ class ContactFixtures extends Fixture implements DependentFixtureInterface
         // for ($i = ContactLinkFixtures::POOL_MIN; $i < ContactLinkFixtures::POOL_MAX; $i++) {
         //     $contactLinkRefs[] = ContactLinkFixtures::PREFIX . $i;
         // }
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
 
         $fonctionRefs = [];
         for ($i = FonctionFixtures::POOL_MIN; $i < FonctionFixtures::POOL_MAX; $i++) {
@@ -41,9 +42,11 @@ class ContactFixtures extends Fixture implements DependentFixtureInterface
             $dateCreated = $this->faker->dateTimeBetween('-2 years', 'now');
             
             $contact->setName($this->faker->firstName(null))
-                    ->setCreatedAt($dateCreated)
-                    ->setUpdatedAt(new \DateTime())
-                    ->setStatus('on');
+                ->setCreatedAt($dateCreated)
+                ->setUpdatedAt(new \DateTime())
+                ->setStatus('on')
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId());
 
             // if ($contactLinkCount > 0) {
             //     $linkIndex = min($i, $contactLinkCount - 1);
@@ -67,6 +70,7 @@ class ContactFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
+            UserFixtures::class,
             FonctionFixtures::class
         ];
     }

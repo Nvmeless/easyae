@@ -7,8 +7,6 @@ use Doctrine\ORM\Mapping as ORM;
 
 trait StatisticsPropertiesTrait
 {
-
-
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
@@ -17,6 +15,12 @@ trait StatisticsPropertiesTrait
 
     #[ORM\Column(length: 24)]
     private ?string $status = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $createdBy = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $updatedBy = null;
 
     public function getStatus(): ?string
     {
@@ -30,7 +34,6 @@ trait StatisticsPropertiesTrait
         return $this;
     }
 
-
     public function getCreatedAt(): ?\DateTimeInterface
     {
         return $this->createdAt;
@@ -40,7 +43,6 @@ trait StatisticsPropertiesTrait
     {
         if (is_null($this->getCreatedAt())) {
             $this->createdAt = $createdAt;
-
         }
 
         return $this;
@@ -58,6 +60,32 @@ trait StatisticsPropertiesTrait
         return $this;
     }
 
+    public function getCreatedBy(): ?string
+    {
+        return $this->createdBy;
+    }
+
+    public function setCreatedBy(string $createdBy): static
+    {
+        if (is_null($this->createdBy)) {
+            $this->createdBy = $createdBy;
+        }
+
+        return $this;
+    }
+
+    public function getUpdatedBy(): ?string
+    {
+        return $this->updatedBy;
+    }
+
+    public function setUpdatedBy(string $updatedBy): static
+    {
+        $this->updatedBy = $updatedBy;
+
+        return $this;
+    }
+
     #[ORM\PrePersist]
     public function initializeTimestamps(): void
     {
@@ -70,7 +98,4 @@ trait StatisticsPropertiesTrait
     {
         $this->setUpdatedAt(new \DateTime());
     }
-
-
-
 }

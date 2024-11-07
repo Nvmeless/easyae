@@ -15,10 +15,12 @@ class ContratFixtures extends Fixture implements DependentFixtureInterface
     public const POOL_MIN = 0;
     public const POOL_MAX = 20;
     private Generator $faker;
+
     public function __construct()
     {
         $this->faker = Factory::create('fr_FR');
     }
+
     public function load(ObjectManager $manager): void
     {
         $now = new \DateTime();
@@ -27,17 +29,20 @@ class ContratFixtures extends Fixture implements DependentFixtureInterface
         for ($i = ContratTypeFixtures::POOL_MIN; $i < ContratTypeFixtures::POOL_MAX; $i++) {
             $typeRefs[] = $prefixType . $i;
         }
+
         $prefixClient = ClientFixtures::PREFIX;
         $clientRefs = [];
         for ($i = ClientFixtures::POOL_MIN; $i < ClientFixtures::POOL_MAX; $i++) {
             $clientRefs[] = $prefixClient . $i;
         }
+
         $prefixProduct = ProductFixtures::PREFIX;
         $productRefs = [];
         for ($i = ProductFixtures::POOL_MIN; $i < ProductFixtures::POOL_MAX; $i++) {
             $productRefs[] = $prefixProduct . $i;
         }
 
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
 
         for ($count = self::POOL_MIN; $count < self::POOL_MAX; $count++) {
             $contrat = new Contrat();
@@ -58,13 +63,15 @@ class ContratFixtures extends Fixture implements DependentFixtureInterface
             $contrat->setName($this->faker->numerify("Contrat-###"))
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
                 ->setStatus("on")
                 ->setType($type)
                 ->setClient($client)
                 ->setStartAt($dateStarted)
                 ->setEndAt($dateEnded)
-                ->setDone($this->faker->numberBetween(0, 1))
-            ;
+                ->setDone($this->faker->numberBetween(0, 1));
+
             $manager->persist($contrat);
             $this->addReference(self::PREFIX . $count, $contrat);
         }
@@ -75,6 +82,7 @@ class ContratFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies()
     {
         return [
+            UserFixtures::class,
             ContratTypeFixtures::class,
             ClientFixtures::class,
             ProductFixtures::class

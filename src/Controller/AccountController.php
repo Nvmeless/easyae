@@ -19,11 +19,19 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/account')]
 
 class AccountController extends AbstractController
 {
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
+
     #[Route(name: 'api_account_index', methods: ["GET"])]
     #[IsGranted("ROLE_ADMIN", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
     public function getAll(AccountRepository $accountRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
@@ -39,6 +47,7 @@ class AccountController extends AbstractController
             return $accountJson;
 
         });
+
         return new JsonResponse($accountJson, JsonResponse::HTTP_OK, [], true);
     }
 
@@ -52,6 +61,10 @@ class AccountController extends AbstractController
     #[Route(name: 'api_account_new', methods: ["POST"])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, ClientRepository $clientRepository, InfoRepository $infoRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+        
         $data = $request->toArray();
         $client = $clientRepository->find($data["client"]);
         $info = $infoRepository->find($data["info"]);
@@ -59,6 +72,8 @@ class AccountController extends AbstractController
         $account->setClient($client)
             ->addInfo($info)
             ->setStatus("on")
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $errors = $validator->validate($account);
@@ -75,9 +90,12 @@ class AccountController extends AbstractController
     #[Route(path: "/{id}", name: 'api_account_edit', methods: ["PATCH"])]
     public function update(TagAwareCacheInterface $cache, Account $account, UrlGeneratorInterface $urlGenerator, Request $request, ClientRepository $clientRepository, InfoRepository $infoRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         if (isset($data['client'])) {
-
             $client = $clientRepository->find($data["client"]);
         }
         if (isset($data["info"])) {
@@ -90,6 +108,7 @@ class AccountController extends AbstractController
             ->setClient($client ?? $updatedAccount->getClient())
             ->addInfo($info ?? $updatedAccount->getInfo())
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $entityManager->persist($updatedAccount);
@@ -103,7 +122,12 @@ class AccountController extends AbstractController
     #[Route(path: "/{id}", name: 'api_account_delete', methods: ["DELETE"])]
     public function delete(Account $account, Request $request, DeleteService $deleteService): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
+
         return $deleteService->deleteEntity($account, $data, 'account');
     }
 }

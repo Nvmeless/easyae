@@ -7,8 +7,9 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Faker\Generator;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
-class ServiceFixtures extends Fixture
+class ServiceFixtures extends Fixture implements DependentFixtureInterface
 {
     public const PREFIX = "service#";
     public const POOL_MIN = 0;
@@ -23,6 +24,7 @@ class ServiceFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
 
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
@@ -35,6 +37,8 @@ class ServiceFixtures extends Fixture
                 ->setUpdatedAt($dateCreated)
                 ->setCreatedAt($dateUpdated)
                 ->setStatus("on")
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
             ;
 
             $manager->persist($service);
@@ -42,5 +46,12 @@ class ServiceFixtures extends Fixture
         }
 
         $manager->flush();
+    }
+
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
+        ];
     }
 }

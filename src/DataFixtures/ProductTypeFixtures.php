@@ -7,8 +7,9 @@ use Faker\Generator;
 use App\Entity\ProductType;
 use Doctrine\Persistence\ObjectManager;
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
-class ProductTypeFixtures extends Fixture
+class ProductTypeFixtures extends Fixture implements DependentFixtureInterface
 {
     public const PREFIX = "productType#";
     public const POOL_MIN = 0;
@@ -20,6 +21,7 @@ class ProductTypeFixtures extends Fixture
     }
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
 
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; ++$i) {
@@ -33,11 +35,19 @@ class ProductTypeFixtures extends Fixture
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus('on')
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
             ;
             $manager->persist($productType);
             $this->addReference(self::PREFIX . $i, $productType);
         }
         $manager->flush();
+    }
 
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
+        ];
     }
 }

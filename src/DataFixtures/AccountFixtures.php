@@ -22,6 +22,7 @@ class AccountFixtures extends Fixture implements DependentFixtureInterface
     }
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
         $prefixClient = ClientFixtures::PREFIX;
         $clientRefs = [];
@@ -40,6 +41,8 @@ class AccountFixtures extends Fixture implements DependentFixtureInterface
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus('on')
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
             ;
             $manager->persist($account);
             $this->addReference(self::PREFIX . $i, $account);
@@ -51,6 +54,7 @@ class AccountFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
+            UserFixtures::class,
             ClientFixtures::class
         ];
     }
