@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Contact;
+use App\Entity\User;
 use App\Repository\ContactRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -136,4 +137,17 @@ class ContactController extends AbstractController
         $data = $request->toArray();
         return $deleteService->deleteEntity($contact, $data, 'contact');
     }
+
+
+    #[Route(path: '/{user}', name: 'api_contact_by_user_show', methods: ["GET"])]
+    public function getContactsByUser(User $user, SerializerInterface $serializer, ContactRepository $contactRepository): JsonResponse
+    {
+        $contactList = $contactRepository->findBy(["user"=> $user]);
+        $contactByUserJson = $serializer->serialize($contactList, 'json', ['groups' => "contact"]);
+        return new JsonResponse($contactByUserJson, JsonResponse::HTTP_OK, [], true);
+    }
+
+
+
+
 }
