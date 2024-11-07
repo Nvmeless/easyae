@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Client;
 use App\Repository\ClientRepository;
+use App\Repository\ContactRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -43,6 +44,15 @@ class ClientController extends AbstractController
         $clientJson = $serializer->serialize($client, 'json', ['groups' => ["client"]]);
         return new JsonResponse($clientJson, JsonResponse::HTTP_OK, [], true);
     }
+
+    #[Route(path: '/{id}/carnet-contact', name: 'api_client_carnet_contact', methods: ["GET"])]
+    public function getCarnetcontact(Client $client = null, SerializerInterface $serializer, ContactRepository $contactRepository) {
+        $contactsList = $contactRepository->findBy(['client' => $client->getId()]);
+        $contactsJson = $serializer->serialize($contactsList, 'json', ['groups' => ["contact"]]);
+
+        return new JsonResponse($contactsJson, JsonResponse::HTTP_OK, [], true);
+    }
+
 
     #[Route(name: 'api_client_new', methods: ["POST"])]
     public function create(Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
