@@ -3,7 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\ProductType;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ProductTypeRepository;
+use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,6 +25,9 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class ProductTypeController extends AbstractController
 {
+
+    use HistoryTrait;
+
     #[Route(name: 'app_product_type_index', methods: ["GET"])]
     #[IsGranted("ROLE_USER", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
     public function getAll(ProductTypeRepository $productTypeRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
@@ -35,6 +41,7 @@ class ProductTypeController extends AbstractController
             return $productTypeJson;
         });
 
+        $this->addHistory(EService::PRODUCT_TYPE, EAction::READ);
         return new JsonResponse($productTypeJson, Response::HTTP_OK, [], true);
     }
 
@@ -43,13 +50,13 @@ class ProductTypeController extends AbstractController
     {
         $productTypeJson = $serializer->serialize($productType, 'json', ['groups' => "productType"]);
 
+        $this->addHistory(EService::PRODUCT_TYPE, EAction::READ);
         return new JsonResponse($productTypeJson, Response::HTTP_OK, [], true);
     }
 
     #[Route(name: 'api_product_type_new', methods: ["POST"])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, ProductTypeRepository $productTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
-        $data = $request->toArray();
         $productType = $serializer->deserialize($request->getContent(), ProductType::class, 'json', []);
         $productType->setClient($productType)
             ->setStatus("on")
@@ -64,35 +71,34 @@ class ProductTypeController extends AbstractController
         $entityManager->flush();
         $cache->invalidateTags(["productType"]);
         $productTypeJson = $serializer->serialize($productType, 'json', ['groups' => "productType"]);
+
+
+        $this->addHistory(EService::PRODUCT_TYPE, EAction::CREATE);
         return new JsonResponse($productTypeJson, JsonResponse::HTTP_OK, [], true);
     }
 
     #[Route(path: "/{id}", name: 'api_product_type_edit', methods: ["PATCH"])]
-    public function update(ProductType $productType, UrlGeneratorInterface $urlGenerator, Request $request, ProductTypeRepository $productTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
+    public function update(ProductType $productType, UrlGeneratorInterface $urlGenerator, Request $request, ProductTypeRepository $productTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
-        $data = $request->toArray();
-        if (isset($data['productType'])) {
-
-            $productType = $productTypeRepository->find($data["productType"]);
-        }
-
+        $this->addHistory(EService::PRODUCT_TYPE, EAction::UPDATE, $productType);
 
         $updatedProductType = $serializer->deserialize($request->getContent(), ProductType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $productType]);
-        $updatedProductType
-            ->setProductType($client ?? $updatedProductType->getProductType())
-            ->setStatus("on")
-        ;
 
         $entityManager->persist($updatedProductType);
         $entityManager->flush();
 
+        $cache->invalidateTags(["productType", "product"]);
+
         $location = $urlGenerator->generate("api_product_type", ['id' => $updatedProductType->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+
         return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT, ["Location" => $location]);
     }
 
     #[Route(path: "/{id}", name: 'api_product_type_delete', methods: ["DELETE"])]
     public function delete(TagAwareCacheInterface $cache, ProductType $productType, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::PRODUCT_TYPE, EAction::UPDATE, $productType);
+
         $data = $request->toArray();
         if (isset($data['force']) && $data['force'] === true) {
             $entityManager->remove($productType);

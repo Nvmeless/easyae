@@ -4,8 +4,11 @@ namespace App\Controller;
 
 use App\Entity\Account;
 use App\Entity\QuantityType;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ClientRepository;
 use App\Repository\QuantityTypeRepository;
+use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,9 +25,14 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class QuantityTypeController extends AbstractController
 {
+
+    use HistoryTrait;
+
     #[Route(name: 'api_quantity_type_index', methods: ["GET"])]
     public function getAll(QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer,TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::READ);
+
         $idCache = "getAllQuantityType";
         $quantityTypeJson = $cache->get($idCache, function (ItemInterface $item) use ($quantityTypeRepository, $serializer) {
             $item->tag("quantityType");
@@ -38,6 +46,8 @@ class QuantityTypeController extends AbstractController
     #[Route(path: '/{id}', name: 'api_quantity_type_show', methods: ["GET"])]
     public function get(QuantityType $quantityType, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::READ);
+
         $quantityTypeJson = $serializer->serialize($quantityType, 'json', ['groups' => "quantityType"]);
 
         return new JsonResponse($quantityTypeJson, JsonResponse::HTTP_OK, [], true);
@@ -46,6 +56,8 @@ class QuantityTypeController extends AbstractController
     #[Route(name: 'api_quantity_type_new', methods: ["POST"])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::CREATE);
+
         $quantityType = $serializer->deserialize($request->getContent(), QuantityType::class, 'json', []);
         $quantityType->setStatus("on");
         $errors = $validator->validate($quantityType);
@@ -62,6 +74,8 @@ class QuantityTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_quantity_type_edit', methods: ["PATCH"])]
     public function update(TagAwareCacheInterface $cache, QuantityType $quantityType, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::UPDATE, $quantityType);
+
         $updatedQuantityType = $serializer->deserialize($request->getContent(), QuantityType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $quantityType]);
         $updatedQuantityType->setStatus("on");
 
@@ -78,6 +92,8 @@ class QuantityTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_quantity_type_delete', methods: ["DELETE"])]
     public function delete(TagAwareCacheInterface $cache, QuantityType $quantityType, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::DELETE, $quantityType);
+
         $data = $request->toArray();
         if (isset($data['force']) && $data['force'] === true) {
             $entityManager->remove($quantityType);

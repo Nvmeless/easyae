@@ -3,9 +3,12 @@
 namespace App\Controller;
 
 use App\Entity\Product;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ProductRepository;
 use App\Repository\ProductTypeRepository;
 use App\Repository\QuantityTypeRepository;
+use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,10 +27,17 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class ProductController extends AbstractController
 {
+
+    use HistoryTrait;
+
+    private const EntityName = "Product";
+
     #[Route(name: 'api_product_index', methods: ['GET'])]
     #[IsGranted("ROLE_USER", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
     public function getAll(ProductRepository $productRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::PRODUCT, EAction::READ);
+
         $idCache = "getAllProduct";
         $productJson = $cache->get($idCache, function (ItemInterface $item) use ($productRepository, $serializer) {
             $item->tag("product");
@@ -44,6 +54,7 @@ class ProductController extends AbstractController
     #[Route(path: '/{id}', name: 'api_product_show', methods: ["GET"])]
     public function get(Product $product, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::PRODUCT, EAction::READ);
 
         $productJson = $serializer->serialize($product, 'json', ['groups' => "product"]);
 
@@ -54,6 +65,8 @@ class ProductController extends AbstractController
     #[Route(name: 'api_product_new', methods: ['POST'])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, ProductTypeRepository $productTypeRepository, QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::PRODUCT, EAction::CREATE);
+
         $data = $request->toArray();
         $type = $productTypeRepository->find($data['type']);
         $quantityType = $quantityTypeRepository->find($data['quantityType']);
@@ -79,6 +92,8 @@ class ProductController extends AbstractController
     #[Route(path: '/{id}', name: 'api_product_edit', methods: ['PATCH'])]
     public function update(TagAwareCacheInterface $cache, Product $product, UrlGeneratorInterface $urlGenerator, Request $request, ProductTypeRepository $productTypeRepository, QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::PRODUCT, EAction::UPDATE, $product);
+
         $data = $request->toArray();
         
         if (isset($data['type'])) {
@@ -99,7 +114,8 @@ class ProductController extends AbstractController
 
         $entityManager->persist($updatedProduct);
         $entityManager->flush();
-        $cache->invalidateTags(['product', 'productType', 'quantityType']);
+
+        $cache->invalidateTags(['product']);
 
         $location = $urlGenerator->generate("api_product_show", ['id' => $updatedProduct->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
 
@@ -109,6 +125,8 @@ class ProductController extends AbstractController
     #[Route(path: "/{id}", name: 'api_product_delete', methods: ["DELETE"])]
     public function delete(TagAwareCacheInterface $cache, Product $product, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::PRODUCT, EAction::DELETE, $product);
+
         $data = $request->toArray();
         if (isset($data['force']) && $data['force'] === true) {
             $entityManager->remove($product);

@@ -4,8 +4,11 @@ namespace App\Controller;
 
 use App\Entity\Contrat;
 use App\Entity\Facturation;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ContratRepository;
 use App\Repository\FacturationRepository;
+use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,10 +24,14 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 #[Route('/api/facturation')]
 class FacturationController extends AbstractController
 {
+
+    use HistoryTrait;
+
     #[Route(name: 'api_facturation_index', methods: ["GET"])]
     #[IsGranted("ROLE_ADMIN", message: "non")]
     public function getAll(FacturationRepository $facturationRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION, EAction::READ);
 
         $idCache = "getAllFacturations";
         $facturationJson = $cache->get($idCache, function (ItemInterface $item) use ($facturationRepository, $serializer) {
@@ -42,6 +49,8 @@ class FacturationController extends AbstractController
     #[Route(path: '/{id}', name: 'api_facturation_show', methods: ["GET"])]
     public function get(Facturation $facturation, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION, EAction::READ);
+
         $facturationJson = $serializer->serialize($facturation, 'json', ['groups' => "facturation"]);
 
         return new JsonResponse($facturationJson, JsonResponse::HTTP_OK, [], true);
@@ -50,6 +59,8 @@ class FacturationController extends AbstractController
     #[Route(name: 'api_facturation_new', methods: ["POST"])]
     public function create(Request $request, ContratRepository $contratRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION, EAction::CREATE);
+
         $data = $request->toArray();
         $contrat = $contratRepository->find($data["contrat"]);
         $facturation = $serializer->deserialize($request->getContent(), Facturation::class, 'json', []);
@@ -66,6 +77,8 @@ class FacturationController extends AbstractController
     #[Route(path: '/{id}', name: 'api_facturation_edit', methods: ["PATCH"])]
     public function update(TagAwareCacheInterface $cache,Facturation $facturation, Request $request, UrlGeneratorInterface $urlGenerator, ContratRepository $contratRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION, EAction::UPDATE, $facturation);
+
         $data = $request->toArray();
         if (isset($data["contrat"])) {
             $contrat = $contratRepository->find($data["contrat"]);
@@ -85,6 +98,7 @@ class FacturationController extends AbstractController
     #[Route(path: '/{id}', name: 'api_facturation_delete', methods: ["DELETE"])]
     public function delete(TagAwareCacheInterface $cache, Facturation $facturation, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION, EAction::DELETE, $facturation);
 
         $data = $request->toArray();
 

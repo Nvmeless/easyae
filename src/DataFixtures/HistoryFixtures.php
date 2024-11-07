@@ -3,6 +3,8 @@
 namespace App\DataFixtures;
 
 use App\Entity\History;
+use App\enum\EAction;
+use App\enum\EService;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -23,14 +25,14 @@ class HistoryFixtures extends Fixture implements DependentFixtureInterface
     {
         $actionPrefix = ActionFixtures::PREFIX;
         $actionRefs = [];
-        for ($i = 0; $i < count(ActionFixtures::actionNames); $i++) {
-            $actionRefs[] = $actionPrefix . ActionFixtures::actionNames[$i];
+        foreach (EAction::cases() as $action) {
+            $actionRefs[] = $actionPrefix . $action->name;
         }
 
         $servicePrefix = ServiceFixtures::PREFIX;
         $serviceRefs = [];
-        for ($i = ServiceFixtures::POOL_MIN; $i < ServiceFixtures::POOL_MAX; $i++) {
-            $serviceRefs[] = $servicePrefix . $i;
+        foreach (EService::cases() as $service) {
+            $serviceRefs[] = $servicePrefix . $service->value;
         }
 
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {

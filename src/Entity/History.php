@@ -26,6 +26,9 @@ class History
     #[ORM\JoinColumn(nullable: false)]
     private ?Action $action = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?array $oldValue = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -51,6 +54,18 @@ class History
     public function setAction(?Action $action): static
     {
         $this->action = $action;
+
+        return $this;
+    }
+
+    public function getOldValue(): ?array
+    {
+        return $this->oldValue;
+    }
+
+    public function setOldValue(?array $oldValue): static
+    {
+        $this->oldValue = $oldValue;
 
         return $this;
     }

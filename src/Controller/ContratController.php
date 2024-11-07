@@ -2,10 +2,13 @@
 
 namespace App\Controller;
 
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ContratTypeRepository;
 use App\Repository\ClientRepository;
 use App\Entity\Contrat;
 use App\Repository\ContratRepository;
+use App\Traits\HistoryTrait;
 use DateTime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,9 +25,14 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class ContratController extends AbstractController
 {
+
+    use HistoryTrait;
+
     #[Route(name: 'api_contrat_index', methods: ["GET"])]
     public function getAll(ContratRepository $contratRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT, EAction::READ);
+
         $idCache = "getAllContrats";
         // $contratList = $contratRepository->findAll();
         // $contratJson = $serializer->serialize($contratList, 'json', ['groups' => "contrat"]);
@@ -46,6 +54,7 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_show', methods: ["GET"])]
     public function get(Contrat $contrat, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT, EAction::READ);
 
         $contratJson = $serializer->serialize($contrat, 'json', ['groups' => "contrat"]);
 
@@ -55,6 +64,8 @@ class ContratController extends AbstractController
     #[Route(name: 'api_contrat_new', methods: ["POST"])]
     public function create(Request $request, clientRepository $clientRepository, ContratTypeRepository $typeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT, EAction::CREATE);
+
         $data = $request->toArray();
         $contrat = $serializer->deserialize($request->getContent(), Contrat::class, 'json', []);
         $client = $clientRepository->find($data["client"]);
@@ -79,6 +90,8 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_edit', methods: ["PATCH"])]
     public function update(Contrat $contrat, UrlGeneratorInterface $urlGenerator, Request $request, clientRepository $clientRepository, ContratTypeRepository $typeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT, EAction::UPDATE, $contrat);
+
         $data = $request->toArray();
         if (isset($data['client'])) {
             $client = $clientRepository->find($data["client"]);
@@ -113,6 +126,8 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_delete', methods: ["DELETE"])]
     public function delete(Contrat $contrat, Request $request, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT, EAction::DELETE, $contrat);
+
         $data = $request->toArray();
         if (isset($data['force']) && $data['force'] === true) {
             $entityManager->remove($contrat);

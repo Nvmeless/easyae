@@ -3,6 +3,7 @@
 namespace App\DataFixtures;
 
 use App\Entity\Service;
+use App\enum\EService;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
@@ -11,8 +12,6 @@ use Faker\Generator;
 class ServiceFixtures extends Fixture
 {
     public const PREFIX = "service#";
-    public const POOL_MIN = 0;
-    public const POOL_MAX = 10;
 
     private Generator $faker;
 
@@ -25,20 +24,19 @@ class ServiceFixtures extends Fixture
     {
         $now = new \DateTime();
 
-        for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
+        foreach (EService::cases() as $item) {
             $dateCreated = $this->faker->dateTimeInInterval('-1 year', '+1 year');
             $dateUpdated = $this->faker->dateTimeBetween($dateCreated, $now);
             $service = new Service();
 
             $service
-                ->setName($this->faker->numerify('service-###'))
-                ->setUpdatedAt($dateCreated)
-                ->setCreatedAt($dateUpdated)
-                ->setStatus("on")
-            ;
+                ->setName($item->value)
+                ->setCreatedAt($dateCreated)
+                ->setUpdatedAt($dateUpdated)
+                ->setStatus("on");
 
             $manager->persist($service);
-            $this->addReference(self::PREFIX . $i, $service);
+            $this->addReference(self::PREFIX . $item->value, $service);
         }
 
         $manager->flush();

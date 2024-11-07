@@ -2,6 +2,7 @@
 
 namespace App\DataFixtures;
 
+use App\enum\EAction;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use App\Entity\Action;
@@ -11,7 +12,6 @@ use Faker\Generator;
 class ActionFixtures extends Fixture
 { 
     public const PREFIX = "action#";
-    public const actionNames = ['create', 'update', 'delete', 'read'];
     private Generator $faker;
     public function __construct()
     {
@@ -22,19 +22,19 @@ class ActionFixtures extends Fixture
         $now = new \DateTime();
 
         
-        foreach (self::actionNames as $name) {
+        foreach (EAction::cases() as $name) {
             
             $dateCreated = $this->faker->dateTimeInInterval('-1 year', '+1 year');
             $dateUpdated = $this->faker->dateTimeBetween($dateCreated, $now);
             $action = new Action();
             $action
-                ->setName($name)
+                ->setName($name->name)
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus('on')
             ;
             $manager->persist($action);
-            $this->addReference(self::PREFIX . $name, $action);
+            $this->addReference(self::PREFIX . $name->name, $action);
         }
         
 

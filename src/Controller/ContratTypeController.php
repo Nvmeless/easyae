@@ -3,7 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\ContratType;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ContratTypeRepository;
+use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -21,10 +24,15 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class ContratTypeController extends AbstractController
 {
+
+    use HistoryTrait;
+
     #[Route(name: 'api_contrat_type_index', methods: ["GET"])]
     #[IsGranted("ROLE_ADMIN", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
     public function getAll(ContratTypeRepository $contratTypeRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT_TYPE, EAction::READ);
+
         $idCache = "getAllContratType";
         $contratTypeJson = $cache->get($idCache, function (ItemInterface $item) use ($contratTypeRepository, $serializer) {
             $item->tag("contratType");
@@ -40,6 +48,8 @@ class ContratTypeController extends AbstractController
     #[Route(path: '/{id}', name: 'api_contrat_type_show', methods: ["GET"])]
     public function get(ContratType $contratType, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT_TYPE, EAction::READ);
+
         $contratTypeJson = $serializer->serialize($contratType, 'json', ['groups' => "contratType"]);
 
         return new JsonResponse($contratTypeJson, JsonResponse::HTTP_OK, [], true);
@@ -48,6 +58,8 @@ class ContratTypeController extends AbstractController
     #[Route(name: 'api_contrat_type_new', methods: ["POST"])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT_TYPE, EAction::CREATE);
+
         $contratType = $serializer->deserialize($request->getContent(), ContratType::class, 'json', []);
         $contratType->setStatus("on");
 
@@ -68,6 +80,8 @@ class ContratTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_type_edit', methods: ["PATCH"])]
     public function update(ValidatorInterface $validator, TagAwareCacheInterface $cache, ContratType $contratType, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT_TYPE, EAction::UPDATE, $contratType);
+
         $updatedContratType = $serializer->deserialize($request->getContent(), ContratType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $contratType]);
         $updatedContratType
             ->setStatus("on")
@@ -90,6 +104,8 @@ class ContratTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_type_delete', methods: ["DELETE"])]
     public function delete(ValidatorInterface $validator, TagAwareCacheInterface $cache, ContratType $contratType, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT_TYPE, EAction::DELETE, $contratType);
+
         $data = $request->toArray();
         if (isset($data['force']) && $data['force'] === true) {
             $entityManager->remove($contratType);
