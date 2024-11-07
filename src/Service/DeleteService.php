@@ -12,12 +12,14 @@ class DeleteService
     private $entityManager;
     private $cache;
     private $security;
-
+    private $user;
+    
     public function __construct(EntityManagerInterface $entityManager, TagAwareCacheInterface $cache, Security $security)
     {
         $this->entityManager = $entityManager;
         $this->cache = $cache;
         $this->security = $security;
+        $this->user = $security->getUser();
     }
 
     public function deleteEntity($entity, array $data, string $cacheTag, string $statusProperty = 'status'): JsonResponse
@@ -31,6 +33,7 @@ class DeleteService
             // Soft delete
             if (property_exists($entity, $statusProperty)) {
                 $entity->{"set" . ucfirst($statusProperty)}("off");
+                $entity->setUpdatedBy($this->user->getId());
                 $this->entityManager->persist($entity);
             } else {
                 return new JsonResponse(["error" => "Property '$statusProperty' not found"], JsonResponse::HTTP_BAD_REQUEST);

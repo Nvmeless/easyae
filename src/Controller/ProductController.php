@@ -20,11 +20,19 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/product')]
 
 class ProductController extends AbstractController
 {
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
+
     #[Route(name: 'api_product_index', methods: ['GET'])]
     #[IsGranted("ROLE_USER", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
     public function getAll(ProductRepository $productRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
@@ -55,6 +63,10 @@ class ProductController extends AbstractController
     #[Route(name: 'api_product_new', methods: ['POST'])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, ProductTypeRepository $productTypeRepository, QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         $type = $productTypeRepository->find($data['type']);
         $quantityType = $quantityTypeRepository->find($data['quantityType']);
@@ -62,7 +74,10 @@ class ProductController extends AbstractController
         $product = $serializer->deserialize($request->getContent(), Product::class, 'json', []);
         $product
             ->setType($type)->setStatus("on")
-            ->setQuantityType($quantityType)->setStatus("on");
+            ->setQuantityType($quantityType)->setStatus("on")
+            ->setCreatedBy($this->user->getId())    
+            ->setUpdatedBy($this->user->getId())
+        ;
 
         $errors = $validator->validate($product);
         if (count($errors) > 0) {
@@ -80,6 +95,10 @@ class ProductController extends AbstractController
     #[Route(path: '/{id}', name: 'api_product_edit', methods: ['PATCH'])]
     public function update(TagAwareCacheInterface $cache, Product $product, UrlGeneratorInterface $urlGenerator, Request $request, ProductTypeRepository $productTypeRepository, QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         
         if (isset($data['type'])) {
@@ -96,6 +115,7 @@ class ProductController extends AbstractController
             ->setType($type ?? $updatedProduct->getType())
             ->setQuantityType($quantityType ?? $updatedProduct->getQuantityType())
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $entityManager->persist($updatedProduct);
@@ -110,6 +130,10 @@ class ProductController extends AbstractController
     #[Route(path: "/{id}", name: 'api_product_delete', methods: ["DELETE"])]
     public function delete(Product $product, Request $request, DeleteService $deleteService): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         return $deleteService->deleteEntity($product, $data, 'product');
     }

@@ -7,8 +7,9 @@ use Faker\Generator;
 use App\Entity\QuantityType;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
-class QuantityTypeFixtures extends Fixture
+class QuantityTypeFixtures extends Fixture implements DependentFixtureInterface
 {
     public const PREFIX = "quantityType#";
     public const POOL_MIN = 0;
@@ -20,6 +21,7 @@ class QuantityTypeFixtures extends Fixture
     }
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
         $quantityTypes = [
             'kebab',
@@ -67,10 +69,19 @@ class QuantityTypeFixtures extends Fixture
                 ->setName($this->faker->randomElement($quantityTypes))
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
-                ->setStatus('on');
+                ->setStatus('on')
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId());
             $manager->persist($quantityType);
             $this->addReference(self::PREFIX . $i, $quantityType);
         }
         $manager->flush();
+    }
+    
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
+        ];
     }
 }

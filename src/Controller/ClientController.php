@@ -17,11 +17,19 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 use App\Service\DeleteService;
 
 #[Route('/api/client')]
 class ClientController extends AbstractController
 {
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
+
     #[Route(name: 'api_client_index', methods: ["GET"])]
     public function getAll(ClientRepository $clientRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
@@ -30,7 +38,7 @@ class ClientController extends AbstractController
         $clientJson = $cache->get($idCache, function (ItemInterface $item) use ($clientRepository, $serializer) {
             $item->tag("client");
 
-            $clientList = $clientRepository->findAll();
+        $clientList = $clientRepository->findAll();
             return $serializer->serialize($clientList, 'json', ['groups' => ["client", "clientType"]]);
         });
 
@@ -90,13 +98,20 @@ class ClientController extends AbstractController
     #[Route(name: 'api_client_new', methods: ["POST"])]
     public function create(Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $client = $serializer->deserialize($request->getContent(), Client::class, 'json');
         if (!$client) {
             return new JsonResponse(['error' => 'Invalid data'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
         if (is_null($client->getStatus())) {
-            $client->setStatus("on");
+            $client->setStatus("on")
+                ->setCreatedBy($this->user->getId())
+                ->setUpdatedBy($this->user->getId())
+            ;
         }
 
         $contact = $client->getContact();
@@ -116,8 +131,12 @@ class ClientController extends AbstractController
     #[Route(path: "/{id}", name: 'api_client_edit', methods: ["PATCH"])]
     public function update(Client $client, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+        
         $updatedClient = $serializer->deserialize($request->getContent(), Client::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $client]);
-        $updatedClient->setStatus("on");
+        $updatedClient->setStatus("on")->setUpdatedBy($this->user->getId());
 
         $entityManager->persist($updatedClient);
         $entityManager->flush();
@@ -133,6 +152,10 @@ class ClientController extends AbstractController
     #[Route(path: "/update_facturation_model/{id}", name: 'update_client_facturationModel', methods: ["POST"])]
     public function updateFacturationModel(Client $client, FacturationModelRepository $modelRepository, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
 
         if (isset($data["facturationModel"])) {
@@ -143,6 +166,7 @@ class ClientController extends AbstractController
         $updatedClient
             ->setStatus("on")
             ->setFacturationModel($model)
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $entityManager->persist($updatedClient);

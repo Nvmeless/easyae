@@ -7,8 +7,9 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Faker\Generator;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
-class ContactLinkTypeFixtures extends Fixture
+class ContactLinkTypeFixtures extends Fixture implements DependentFixtureInterface
 {
     public const PREFIX = "contactLinkType#";
     public const POOL_MIN = 0;
@@ -21,6 +22,7 @@ class ContactLinkTypeFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
 
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
@@ -32,11 +34,20 @@ class ContactLinkTypeFixtures extends Fixture
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus('on')
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
             ;
             $manager->persist($contactLinkType);
             $this->addReference(self::PREFIX . $i, $contactLinkType);
         }
 
         $manager->flush();
+    }
+
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
+        ];
     }
 }

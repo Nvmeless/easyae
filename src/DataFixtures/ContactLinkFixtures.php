@@ -22,7 +22,7 @@ class ContactLinkFixtures extends Fixture implements DependentFixtureInterface
 
     public function load(ObjectManager $manager): void
     {
-
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
 
         $prefixContact = ContactFixtures::PREFIX;
@@ -55,6 +55,8 @@ class ContactLinkFixtures extends Fixture implements DependentFixtureInterface
                 ->setUpdatedAt($dateUpdated)
                 ->setContactLinkType($contactLinkType)
                 ->setStatus('on')
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
             ;
             $manager->persist($contactLink);
             $this->addReference(self::PREFIX . $i, $contactLink);
@@ -65,11 +67,9 @@ class ContactLinkFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
+            UserFixtures::class,
             ContactFixtures::class,
-
             ContactLinkTypeFixtures::class
-
-
         ];
     }
 }

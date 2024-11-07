@@ -18,11 +18,19 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/info')]
 
 class InfoController extends AbstractController
 {
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
+
     #[Route(name: 'api_info_index', methods: ["GET"])]
     #[IsGranted("ROLE_USER", message: "Vous n'avez pas les droits nécéssaires pour accéder a cette route.")]
     public function getAll(InfoRepository $infoRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
@@ -37,7 +45,7 @@ class InfoController extends AbstractController
             $infoJson = $serializer->serialize($infoList, 'json', ['groups' => "info"]);
 
             return $infoJson;
-
+            
         });
 
 
@@ -58,11 +66,17 @@ class InfoController extends AbstractController
 
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, InfoTypeRepository $infoTypeRepository, EntityManagerInterface $entityManager): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         $infoType = $infoTypeRepository->find($data["type"]);
         $info = $serializer->deserialize($request->getContent(), Info::class, 'json', []);
         $info->setType($infoType)
             ->setStatus("on")
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $errors = $validator->validate($info);
@@ -79,6 +93,10 @@ class InfoController extends AbstractController
     #[Route(path: "/{id}", name: 'api_info_edit', methods: ["PATCH"])]
     public function update(TagAwareCacheInterface $cache, Info $info, UrlGeneratorInterface $urlGenerator, Request $request, InfoTypeRepository $infoTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         if (isset($data['type'])) {
 
@@ -89,6 +107,7 @@ class InfoController extends AbstractController
         $updatedInfo
             ->setType($type ?? $updatedInfo->getType())
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $entityManager->persist($updatedInfo);
@@ -101,6 +120,10 @@ class InfoController extends AbstractController
     #[Route(path: "/{id}", name: 'api_info_delete', methods: ["DELETE"])]
     public function delete(Info $info, Request $request, DeleteService $deleteService): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $data = $request->toArray();
         return $deleteService->deleteEntity($info, $data, 'info');
     }
