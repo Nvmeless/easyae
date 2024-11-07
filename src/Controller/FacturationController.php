@@ -111,8 +111,8 @@ class FacturationController extends AbstractController
 
         return new JsonResponse($factureJson, JsonResponse::HTTP_OK, [], true);
     }
-    
-  
+
+
 
     #[Route(path: '/{id}', name: 'api_facturation_edit', methods: ["PATCH"])]
     #[IsGranted("ROLE_ADMIN", message: "not authorized")]
@@ -142,6 +142,6 @@ class FacturationController extends AbstractController
     public function delete(Facturation $facturation, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-       return $deleteService->deleteEntity($action, $data, 'facturation');
+        return $deleteService->deleteEntity($facturation, $data, 'facturation');
     }
 }
