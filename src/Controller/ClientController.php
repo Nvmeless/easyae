@@ -46,7 +46,7 @@ class ClientController extends AbstractController
     }
 
     #[Route(path: '/{id}/carnet-contact', name: 'api_client_carnet_contact', methods: ["GET"])]
-    public function getCarnetcontact(Client $client = null, SerializerInterface $serializer, ContactRepository $contactRepository) {
+    public function getCarnetContact(Client $client = null, SerializerInterface $serializer, ContactRepository $contactRepository) {
         $contactsList = $contactRepository->findBy(['client' => $client->getId()]);
         $contactsJson = $serializer->serialize($contactsList, 'json', ['groups' => ["contact"]]);
 
