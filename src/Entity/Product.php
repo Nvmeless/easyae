@@ -24,11 +24,11 @@ class Product
     private ?int $id = null;
 
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product', 'contrat'])]
     private ?int $quantity = null;
 
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product', 'contrat'])]
     private ?float $price = null;
 
     #[ORM\Column]
@@ -37,7 +37,7 @@ class Product
 
     #[ORM\ManyToOne(inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['product'])]
+    #[Groups(['product', 'contrat'])]
     private ?ProductType $type = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
