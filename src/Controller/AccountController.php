@@ -18,6 +18,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/account')]
 
@@ -40,7 +41,7 @@ class AccountController extends AbstractController
         });
         return new JsonResponse($accountJson, JsonResponse::HTTP_OK, [], true);
     }
-    
+
     #[Route(path: '/{id}', name: 'api_account_show', methods: ["GET"])]
     public function get(Account $account, SerializerInterface $serializer): JsonResponse
     {
@@ -100,20 +101,9 @@ class AccountController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_account_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, Account $account, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(Account $account, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($account);
-        } else {
-            $account->setStatus("off");
-            $entityManager->persist($account);
-        }
-        $entityManager->flush();
-        $cache->invalidateTags(["account"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($account, $data, 'account');
     }
 }

@@ -3,9 +3,12 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_USERNAME', fields: ['username'])]
@@ -14,15 +17,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups('user')]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
+    #[Groups('user')]
     private ?string $username = null;
 
     /**
      * @var list<string> The user roles
      */
     #[ORM\Column]
+    #[Groups('user')]
     private array $roles = [];
 
     /**
@@ -30,6 +36,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\Column]
     private ?string $password = null;
+
+    /**
+     * @var Collection<int, Info>
+     */
+    #[ORM\OneToMany(targetEntity: Info::class, mappedBy: 'user')]
+    private Collection $info;
+
+    public function __construct()
+    {
+        $this->info = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -104,5 +121,35 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
+    }
+
+    /**
+     * @return Collection<int, Info>
+     */
+    public function getInfo(): Collection
+    {
+        return $this->info;
+    }
+
+    public function addInfo(Info $info): static
+    {
+        if (!$this->info->contains($info)) {
+            $this->info->add($info);
+            $info->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeInfo(Info $info): static
+    {
+        if ($this->info->removeElement($info)) {
+            // set the owning side to null (unless already changed)
+            if ($info->getUser() === $this) {
+                $info->setUser(null);
+            }
+        }
+
+        return $this;
     }
 }

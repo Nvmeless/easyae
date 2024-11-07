@@ -17,7 +17,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
-
+use App\Service\DeleteService;
 
 #[Route('/api/info')]
 
@@ -99,22 +99,9 @@ class InfoController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_info_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, Info $info, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(Info $info, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($info);
-        } else {
-            $info
-                ->setStatus("off")
-            ;
-            $entityManager->persist($info);
-        }
-        $entityManager->flush();
-        $cache->invalidateTags(["info"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($info, $data, 'info');
     }
 }

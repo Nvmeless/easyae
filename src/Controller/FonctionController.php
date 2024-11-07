@@ -14,6 +14,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/fonction')]
 class FonctionController extends AbstractController
@@ -69,20 +70,9 @@ class FonctionController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_fonction_delete', methods: ["DELETE"])]
-    public function delete(Fonction $fonction, Request $request, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+     public function delete(Fonction $fonction, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($fonction);
-        } else {
-            $fonction->setStatus("off");
-            $entityManager->persist($fonction);
-        }
-        $entityManager->flush();
-        $cache->invalidateTags(["fonction"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($fonction, $data, 'fonction');
     }
 }

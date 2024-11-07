@@ -17,6 +17,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/quantity-type')]
 
@@ -76,20 +77,9 @@ class QuantityTypeController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_quantity_type_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, QuantityType $quantityType, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(QuantityType $quantityType, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($quantityType);
-        } else {
-            $quantityType->setStatus("off");
-            $entityManager->persist($quantityType);
-        }
-        $cache->invalidateTags(["quantityType"]);
-        $entityManager->flush();
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($quantityType, $data, 'quantityType');
     }
 }

@@ -57,6 +57,9 @@ class Info
         $this->account = new ArrayCollection();
     }
 
+    #[ORM\ManyToOne(inversedBy: 'info')]
+    private ?User $user = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -94,6 +97,18 @@ class Info
     public function setType(?InfoType $type): static
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): static
+    {
+        $this->user = $user;
 
         return $this;
     }

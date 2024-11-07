@@ -14,6 +14,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/history')]
 
@@ -85,21 +86,9 @@ class HistoryController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_history_delete', methods: ["DELETE"])]
-    public function delete(History $history, Request $request, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+    public function delete(History $history, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-
-        if (isset($data['force']) && $data['force'] === true) {
-            $entityManager->remove($history);
-        } else {
-            $history->setStatus("off");
-            $entityManager->persist($history);
-        }
-
-        $entityManager->flush();
-
-        $cache->invalidateTags(["history"]);
-
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($history, $data, 'history');
     }
 }

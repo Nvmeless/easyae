@@ -13,8 +13,8 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Contracts\Cache\ItemInterface;
-
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/contact-link-type')]
 
@@ -67,21 +67,9 @@ class ContactLinkTypeController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_contact_link_type_delete', methods: ["DELETE"])]
-    public function delete(ContactLinkType $contactLinkType, Request $request, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+    public function delete(ContactLinkType $contactLinkType, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($contactLinkType);
-        } else {
-            $contactLinkType->setStatus("off");
-            $entityManager->persist($contactLinkType);
-        }
-        $entityManager->flush();
-        $this->cache->invalidateTags(['contactLinkType']);
-        $cache->invalidateTags(["contactLinkType"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($contactLinkType, $data, 'contactLinkType');
     }
 }

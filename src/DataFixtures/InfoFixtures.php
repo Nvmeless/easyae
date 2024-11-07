@@ -45,6 +45,8 @@ class InfoFixtures extends Fixture implements DependentFixtureInterface
             $dateCreated = $this->faker->dateTimeInInterval('-1 year', '+1 year');
             $dateUpdated = $this->faker->dateTimeBetween($dateCreated, $now);
             $type = $this->getReference($infoTypeRefs[array_rand($infoTypeRefs, 1)]);
+            $user = $this->getReference(UserFixtures::ADMIN_REF);
+
             $info = new Info();
             $info
                 ->setAnonymous($this->faker->boolean(20))
@@ -54,7 +56,8 @@ class InfoFixtures extends Fixture implements DependentFixtureInterface
                 ->addAccount($this->getReference($accountRefs[array_rand($accountRefs, 1)]))
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
-                ->setStatus($this->faker->boolean() ? "on" : "off");
+                ->setStatus($this->faker->boolean() ? "on" : "off")
+                ->setUser($user);
             $manager->persist($info);
             $this->addReference(self::PREFIX . $i, $info);
         }
@@ -68,6 +71,7 @@ class InfoFixtures extends Fixture implements DependentFixtureInterface
             InfoTypeFixtures::class,
             ClientFixtures::class,
             AccountFixtures::class,
+            UserFixtures::class
         ];
     }
 }

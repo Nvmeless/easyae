@@ -14,6 +14,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/action')]
 
@@ -85,21 +86,9 @@ class ActionController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_action_delete', methods: ["DELETE"])]
-    public function delete(Action $action, Request $request, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+    public function delete(Action $action, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-
-        if (isset($data['force']) && $data['force'] === true) {
-            $entityManager->remove($action);
-        } else {
-            $action->setStatus("off");
-            $entityManager->persist($action);
-        }
-
-        $entityManager->flush();
-
-        $cache->invalidateTags(["action"]);
-
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($action, $data, 'action');
     }
 }

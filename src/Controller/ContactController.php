@@ -16,6 +16,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/contact')]
 
@@ -104,22 +105,9 @@ class ContactController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_contact_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, Contact $contact, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(Contact $contact, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($contact);
-        } else {
-            $contact
-                ->setStatus("off");
-            $entityManager->persist($contact);
-        }
-        $entityManager->flush();
-        $cache->invalidateTags(["contact"]); 
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($contact, $data, 'contact');
     }
 }

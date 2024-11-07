@@ -20,17 +20,20 @@ class UserFixtures extends Fixture
     private Generator $faker;
 
     private $userPasswordHasher;
+
     public function __construct(UserPasswordHasherInterface $userPasswordHasher)
     {
         $this->userPasswordHasher = $userPasswordHasher;
         $this->faker = Factory::create('fr_FR');
     }
+
     public function load(ObjectManager $manager): void
     {
         $admin = new User();
         $admin->setUsername("admin");
         $admin->setRoles(["ROLE_ADMIN"]);
         $admin->setPassword($this->userPasswordHasher->hashPassword($admin, 'password'));
+        $this->addReference(self::ADMIN_REF, $admin);
 
         $manager->persist($admin);
 

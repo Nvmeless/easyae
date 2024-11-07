@@ -17,6 +17,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Service\DeleteService;
 
 #[Route('/api/productType')]
 
@@ -91,22 +92,9 @@ class ProductTypeController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_product_type_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, ProductType $productType, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(ProductType $productType, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($productType);
-        } else {
-            $productType->setStatus("off");
-            $entityManager->persist($productType);
-        }
-        $entityManager->flush();
-        $cache->invalidateTags(["productType"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($productType, $data, 'productType');
     }
-
-
 }

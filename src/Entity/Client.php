@@ -24,9 +24,7 @@ class Client
     private ?int $id = null;
 
     #[ORM\Column(length: 64)]
-
     #[Groups(['client', 'contrat', 'info'])]
-
 
     private ?string $name = null;
 
@@ -34,7 +32,7 @@ class Client
      * @var Collection<int, Account>
      */
     #[ORM\OneToMany(targetEntity: Account::class, mappedBy: 'client')]
-    #[Groups(['client','account'])]
+    #[Groups(['client', 'account'])]
 
     private Collection $accounts;
 
@@ -42,7 +40,7 @@ class Client
      * @var Collection<int, Contrat>
      */
     #[ORM\OneToMany(targetEntity: Contrat::class, mappedBy: 'client')]
-    #[Groups(['client'])]
+    #[Groups(['client2'])]
     private Collection $contrats;
 
     #[ORM\ManyToOne(inversedBy: 'clients')]
@@ -57,7 +55,7 @@ class Client
      * @var Collection<int, Info>
      */
     #[ORM\ManyToMany(targetEntity: Info::class, mappedBy: 'client')]
-    #[Groups(['client','info'])]
+    #[Groups(['client2', 'info'])]
     private Collection $info;
 
     public function __construct()

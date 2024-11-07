@@ -13,10 +13,13 @@ use Symfony\Component\Routing\Attribute\Route;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
 
 #[Route('/api/contact-link')]
+#[IsGranted("ROLE_ADMIN", message: "Vous n'avez pas l'accès")]
 
 class ContactLinkController extends AbstractController
 {
@@ -88,20 +91,9 @@ class ContactLinkController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_contact_link_delete', methods: ["DELETE"])]
-    public function delete(ContactLink $contactLink, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(ContactLink $contactLink, Request $request, DeleteService $deleteService): JsonResponse
     {
         $data = $request->toArray();
-        if (isset($data['force']) && $data['force'] === true) {
-            if (!$this->isGranted("ROLE_ADMIN")) {
-                return new JsonResponse(["error" => "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh"], JsonResponse::HTTP_FORBIDDEN);
-            }
-            $entityManager->remove($contactLink);
-        } else {
-            $contactLink->setStatus("off");
-            $entityManager->persist($contactLink);
-        }
-        $entityManager->flush();
-        $this->cache->invalidateTags(['contactLink']);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        return $deleteService->deleteEntity($contactLink, $data, 'contactLink');
     }
 }
