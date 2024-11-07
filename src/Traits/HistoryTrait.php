@@ -36,7 +36,7 @@ trait HistoryTrait
             ->setCreatedAt($actualDate)
             ->setUpdatedAt($actualDate)
             ->setStatus("on")
-            ->setOldValue($this->serializer->normalize($old, null))
+            ->setOldValue($this->serializer->normalize($old, null, ['groups' => 'base']))
             ->setService($serviceToLink)
             ->setAction($actionToLink);
 
