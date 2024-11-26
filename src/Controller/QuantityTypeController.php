@@ -3,7 +3,11 @@
 namespace App\Controller;
 
 use App\Entity\QuantityType;
+use App\enum\EAction;
+use App\enum\EService;
+use App\Repository\ClientRepository;
 use App\Repository\QuantityTypeRepository;
+use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,6 +24,30 @@ use Symfony\Bundle\SecurityBundle\Security;
 #[Route('/api/quantity-type')]
 class QuantityTypeController extends AbstractController
 {
+
+    use HistoryTrait;
+
+    #[Route(name: 'api_quantity_type_index', methods: ["GET"])]
+    public function getAll(QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer,TagAwareCacheInterface $cache): JsonResponse
+    {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::READ);
+
+        $idCache = "getAllQuantityType";
+        $quantityTypeJson = $cache->get($idCache, function (ItemInterface $item) use ($quantityTypeRepository, $serializer) {
+            $item->tag("quantityType");
+            //$item->tag("product");
+            $quantityTypeList = $quantityTypeRepository->findAll();
+            $quantityTypeJson = $serializer->serialize($quantityTypeList, 'json', ['groups' => "quantityType"]);
+            return $quantityTypeJson;
+        });
+        return new JsonResponse($quantityTypeJson, JsonResponse::HTTP_OK, [], true);
+    }
+    #[Route(path: '/{id}', name: 'api_quantity_type_show', methods: ["GET"])]
+    public function get(QuantityType $quantityType, SerializerInterface $serializer): JsonResponse
+    {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::READ);
+
+        $quantityTypeJson = $serializer->serialize($quantityType, 'json', ['groups' => "quantityType"]);
     use CrudTrait;
     private $user;
 
@@ -108,6 +136,7 @@ class QuantityTypeController extends AbstractController
         );
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::CREATE);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
@@ -131,6 +160,7 @@ class QuantityTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_quantity_type_edit', methods: ["PATCH"])]
     public function update(TagAwareCacheInterface $cache, QuantityType $quantityType, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::UPDATE, $quantityType);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
@@ -153,6 +183,18 @@ class QuantityTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_quantity_type_delete', methods: ["DELETE"])]
     public function delete(QuantityType $quantityType, Request $request, DeleteService $deleteService): JsonResponse
     {
+        $this->addHistory(EService::QUANTITY_TYPE, EAction::DELETE, $quantityType);
+
+        $data = $request->toArray();
+        if (isset($data['force']) && $data['force'] === true) {
+            $entityManager->remove($quantityType);
+
+
+        } else {
+            $quantityType
+                ->setStatus("off")
+            ;
+            $entityManager->persist($quantityType);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }

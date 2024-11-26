@@ -3,8 +3,11 @@
 namespace App\Controller;
 
 use App\Entity\ContactLink;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ContactLinkRepository;
 use App\Repository\ContactLinkTypeRepository;
+use App\Traits\HistoryTrait;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -23,7 +26,12 @@ use Symfony\Bundle\SecurityBundle\Security;
 
 class ContactLinkController extends AbstractController
 {
+
+
+    use HistoryTrait;
+
     private $user;
+
 
     public function __construct(
         private readonly TagAwareCacheInterface $cache,
@@ -36,6 +44,8 @@ class ContactLinkController extends AbstractController
     #[Route(name: 'api_contact_link_index', methods: ["GET"])]
     public function getAll(ContactLinkRepository $contactLinkRepository, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::CONTACT_LINK, EAction::READ);
+
         $idCache = 'getAllContactLinks';
         $contactLinkJson = $this->cache->get($idCache, function (ItemInterface $item) use ($contactLinkRepository, $serializer) {
             $item->tag('contactLink');
@@ -50,7 +60,7 @@ class ContactLinkController extends AbstractController
     #[Route(path: '/{id}', name: 'api_contact_link_show', methods: ["GET"])]
     public function get(ContactLink $contactLink, SerializerInterface $serializer): JsonResponse
     {
-        // $contactLinkList = $contactLinkRepository->find($id);
+        $this->addHistory(EService::CONTACT_LINK, EAction::READ);
 
         $contactLinkJson = $serializer->serialize($contactLink, 'json', ['groups' => "contactLink"]);
 
@@ -60,9 +70,13 @@ class ContactLinkController extends AbstractController
     #[Route(name: 'api_contact_link_new', methods: ["POST"])]
     public function create(Request $request, ContactLinkTypeRepository $contactLinkTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+
+        $this->addHistory(EService::CONTACT_LINK, EAction::CREATE);
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
+
 
         $data = $request->toArray();
         $contactLinkType = $contactLinkTypeRepository->find($data["contactLinkType"]);
@@ -82,9 +96,13 @@ class ContactLinkController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contact_link_edit', methods: ["PATCH"])]
     public function update(ContactLink $contactLink, UrlGeneratorInterface $urlGenerator, Request $request, ContactLinkTypeRepository $contactLinkTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+
+        $this->addHistory(EService::CONTACT_LINK, EAction::UPDATE, $contactLink);
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
+
 
         $data = $request->toArray();
         if (isset($data['ContactLinkType'])) {
@@ -109,8 +127,19 @@ class ContactLinkController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contact_link_delete', methods: ["DELETE"])]
     public function delete(ContactLink $contactLink, Request $request, DeleteService $deleteService): JsonResponse
     {
+
+        $this->addHistory(EService::CONTACT_LINK, EAction::DELETE, $contactLink);
+
+        $data = $request->toArray();
+        if (isset($data['force']) && $data['force'] === true) {
+            $entityManager->remove($contactLink);
+        } else {
+            $contactLink->setStatus("off");
+            $entityManager->persist($contactLink);
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+
         }
 
         $data = $request->toArray();

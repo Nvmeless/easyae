@@ -2,6 +2,7 @@
 
 namespace App\DataFixtures;
 
+use App\enum\EAction;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use App\Entity\Action;
@@ -19,21 +20,21 @@ class ActionFixtures extends Fixture
     public function load(ObjectManager $manager): void
     { 
         $now = new \DateTime();
-        $actionNames = ['create', 'update', 'delete', 'read'];
 
         
-        foreach ($actionNames as $name) {
+        foreach (EAction::cases() as $name) {
             
             $dateCreated = $this->faker->dateTimeInInterval('-1 year', '+1 year');
             $dateUpdated = $this->faker->dateTimeBetween($dateCreated, $now);
             $action = new Action();
             $action
-                ->setName($name)
+                ->setName($name->name)
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus('on')
             ;
-            $manager->persist($action); 
+            $manager->persist($action);
+            $this->addReference(self::PREFIX . $name->name, $action);
         }
         
 

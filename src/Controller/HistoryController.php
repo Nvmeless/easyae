@@ -56,11 +56,6 @@ class HistoryController extends AbstractController
             $history->setStatus("on");
         }
 
-        $contact = $history->getContact();
-        if ($contact) {
-            $entityManager->persist($contact);
-        }
-
         $entityManager->persist($history);
         $entityManager->flush();
 

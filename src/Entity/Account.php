@@ -26,7 +26,7 @@ class Account
     #[Assert\Length(min: 4, max: 255, minMessage: "Votre Compte doit avoir un Nom comportantau moins {{limit}} caractères")]
     #[Assert\NotNull(message: "Votre Compte doit avoir un Nom non null")]
     #[ORM\Column(length: 255)]
-    #[Groups(['account','info'])]
+    #[Groups(['account', 'base'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 24)]

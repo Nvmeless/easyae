@@ -3,7 +3,13 @@
 namespace App\Controller;
 
 use App\Entity\Facturation;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ContratRepository;
+
+use App\Repository\FacturationRepository;
+use App\Traits\HistoryTrait;
+
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\DeleteService;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -23,6 +29,9 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 #[Route('/api/facturation')]
 class FacturationController extends AbstractController
 {
+
+    use HistoryTrait;
+
     private $user;
 
     public function __construct(Security $security)
@@ -30,10 +39,12 @@ class FacturationController extends AbstractController
         $this->user = $security->getUser();
     }
 
+
     #[Route(name: 'api_facturation_index', methods: ["GET"])]
     #[IsGranted("ROLE_ADMIN", message: "not authorized")]
     public function getAll(FacturationRepository $facturationRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION, EAction::READ);
 
         $idCache = "getAllFacturations";
         $facturationJson = $cache->get($idCache, function (ItemInterface $item) use ($facturationRepository, $serializer) {
@@ -59,11 +70,38 @@ class FacturationController extends AbstractController
     ): JsonResponse {
         $contrat = $contratRepository->find($contratId);
 
+
+    #[Route(path: '/{id}', name: 'api_facturation_show', methods: ["GET"])]
+    public function get(Facturation $facturation, SerializerInterface $serializer): JsonResponse
+    {
+        $this->addHistory(EService::FACTURATION, EAction::READ);
+
+        $facturationJson = $serializer->serialize($facturation, 'json', ['groups' => "facturation"]);
+
         if (!$contrat) {
             return new JsonResponse(['message' => 'Contrat non trouvé'], JsonResponse::HTTP_NOT_FOUND);
         }
 
+
         $facturation = $facturationRepository->findOneBy(['contrat' => $contrat]);
+
+
+    #[Route(name: 'api_facturation_new', methods: ["POST"])]
+    public function create(Request $request, ContratRepository $contratRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+    {
+        $this->addHistory(EService::FACTURATION, EAction::CREATE);
+
+        $data = $request->toArray();
+        $contrat = $contratRepository->find($data["contrat"]);
+        $facturation = $serializer->deserialize($request->getContent(), Facturation::class, 'json', []);
+        $facturation->setcontrat($contrat)
+            ->setStatus("on")
+        ;
+        $entityManager->persist($facturation);
+        $entityManager->flush();
+        $cache->invalidateTags(["facturation"]);
+        $contratJson = $serializer->serialize($facturation, 'json', ['groups' => "facturation"]);
+        return new JsonResponse($contratJson, JsonResponse::HTTP_OK, [], true);
 
         if (!$facturation) {
             $facturation = new Facturation();
@@ -110,6 +148,7 @@ class FacturationController extends AbstractController
         $factureJson = $serializer->serialize($factureData, 'json', ['groups' => 'facturation']);
 
         return new JsonResponse($factureJson, JsonResponse::HTTP_OK, [], true);
+
     }
     
   
@@ -118,6 +157,8 @@ class FacturationController extends AbstractController
     #[IsGranted("ROLE_ADMIN", message: "not authorized")]
     public function update(TagAwareCacheInterface $cache, Facturation $facturation, Request $request, UrlGeneratorInterface $urlGenerator, ContratRepository $contratRepository, FacturationModelRepository $modelRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION, EAction::UPDATE, $facturation);
+
         $data = $request->toArray();
         if (isset($data["contrat"])) {
             $contrat = $contratRepository->find($data["contrat"]);
@@ -141,6 +182,9 @@ class FacturationController extends AbstractController
     #[IsGranted("ROLE_ADMIN", message: "not authorized")]
     public function delete(Facturation $facturation, Request $request, DeleteService $deleteService): JsonResponse
     {
+
+        $this->addHistory(EService::FACTURATION, EAction::DELETE, $facturation);
+
         $data = $request->toArray();
        return $deleteService->deleteEntity($action, $data, 'facturation');
     }
