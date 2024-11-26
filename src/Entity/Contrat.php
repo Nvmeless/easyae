@@ -14,7 +14,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\HasLifecycleCallbacks]
 class Contrat
 {
-
     use StatisticsPropertiesTrait;
 
     #[ORM\Id]
@@ -55,6 +54,7 @@ class Contrat
      * @var Collection<int, Product>
      */
     #[ORM\ManyToMany(targetEntity: Product::class, inversedBy: 'contrats')]
+    #[Groups(['contrat'])]
     private Collection $products;
 
     public function __construct()
@@ -122,7 +122,6 @@ class Contrat
 
     public function setFacturation(Facturation $facturation): static
     {
-        // set the owning side of the relation if necessary
         if ($facturation->getContrat() !== $this) {
             $facturation->setContrat($this);
         }

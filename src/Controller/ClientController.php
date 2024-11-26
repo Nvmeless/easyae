@@ -3,10 +3,15 @@
 namespace App\Controller;
 
 use App\Entity\Client;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\ClientRepository;
+
+use App\Traits\HistoryTrait;
 use App\Repository\ContactRepository;
 use App\Repository\FacturationModelRepository;
 use App\Repository\AccountRepository;
+
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,6 +28,10 @@ use App\Service\DeleteService;
 #[Route('/api/client')]
 class ClientController extends AbstractController
 {
+
+
+    use HistoryTrait;
+
     private $user;
 
     public function __construct(Security $security)
@@ -30,9 +39,12 @@ class ClientController extends AbstractController
         $this->user = $security->getUser();
     }
 
+
     #[Route(name: 'api_client_index', methods: ["GET"])]
     public function getAll(ClientRepository $clientRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::CLIENT, EAction::READ);
+
         $idCache = "getAllClients";
 
         $clientJson = $cache->get($idCache, function (ItemInterface $item) use ($clientRepository, $serializer) {
@@ -57,6 +69,8 @@ class ClientController extends AbstractController
     #[Route(path: '/{id}', name: 'api_client_show', methods: ["GET"])]
     public function get(Client $client = null, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::CLIENT, EAction::READ);
+
         if (!$client) {
             return new JsonResponse(['error' => 'Client not found'], JsonResponse::HTTP_NOT_FOUND);
         }
@@ -98,9 +112,13 @@ class ClientController extends AbstractController
     #[Route(name: 'api_client_new', methods: ["POST"])]
     public function create(Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+
+        $this->addHistory(EService::CLIENT, EAction::CREATE);
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
+
 
         $client = $serializer->deserialize($request->getContent(), Client::class, 'json');
         if (!$client) {
@@ -131,10 +149,15 @@ class ClientController extends AbstractController
     #[Route(path: "/{id}", name: 'api_client_edit', methods: ["PATCH"])]
     public function update(Client $client, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+
+        $this->addHistory(EService::CLIENT, EAction::UPDATE, $client);
+
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
         
+
         $updatedClient = $serializer->deserialize($request->getContent(), Client::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $client]);
         $updatedClient->setStatus("on")->setUpdatedBy($this->user->getId());
 
@@ -152,9 +175,13 @@ class ClientController extends AbstractController
     #[Route(path: "/update_facturation_model/{id}", name: 'update_client_facturationModel', methods: ["POST"])]
     public function updateFacturationModel(Client $client, FacturationModelRepository $modelRepository, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+
+        $this->addHistory(EService::CLIENT, EAction::DELETE, $client);
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
+
 
         $data = $request->toArray();
 

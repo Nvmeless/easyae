@@ -1,6 +1,12 @@
 <?php
 
 namespace App\Controller;
+use App\Entity\Account;
+use App\enum\EAction;
+use App\enum\EService;
+use App\Repository\ClientRepository;
+use App\Repository\FacturationModelRepository;
+use App\Traits\HistoryTrait;
 use App\Entity\FacturationModel;
 use App\Repository\FacturationModelRepository;
 use App\Repository\ClientRepository;
@@ -9,6 +15,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Entity\FacturationModel;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -22,6 +32,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 #[IsGranted("ROLE_ADMIN", message: "No access!")]
 class FacturationModelController extends AbstractController
 {
+    use HistoryTrait;
     private $user;
 
     public function __construct(Security $security)
@@ -32,7 +43,10 @@ class FacturationModelController extends AbstractController
     #[Route(name: 'api_facturation_model_index', methods: ["GET"])]
     public function getAll(FacturationModelRepository $facturationModelRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION_MODEL, EAction::READ);
+
         $idCache = "getAllFacturationsModels";
+
         $facturationModelJson = $cache->get($idCache, function (ItemInterface $item) use ($facturationModelRepository, $serializer) {
             $item->tag("facturationModel");
             $item->tag("client");
@@ -49,6 +63,8 @@ class FacturationModelController extends AbstractController
     #[Route(path: '/{id}', name: 'api_facturation_model_show', methods: ["GET"])]
     public function get(FacturationModel $facturationModel, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION_MODEL, EAction::READ);
+
         $facturationModelJson = $serializer->serialize($facturationModel, 'json', ['groups' => "facturationModel"]);
 
         return new JsonResponse($facturationModelJson, JsonResponse::HTTP_OK, [], true);
@@ -57,6 +73,7 @@ class FacturationModelController extends AbstractController
     #[Route(name: 'api_facturation_model_new', methods: ["POST"])]
     public function create(tagAwareCacheInterface $cache, Request $request, ClientRepository $clientRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION_MODEL, EAction::CREATE);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
@@ -79,6 +96,7 @@ class FacturationModelController extends AbstractController
     #[Route(path: "/{id}", name: 'api_facturation_model_edit', methods: ["PATCH"])]
     public function update(tagAwareCacheInterface $cache ,FacturationModel $facturationModel, UrlGeneratorInterface $urlGenerator, Request $request, ClientRepository $clientRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION_MODEL, EAction::UPDATE, $facturationModel);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
@@ -107,6 +125,19 @@ class FacturationModelController extends AbstractController
     #[Route(path: "/{id}", name: 'api_facturation_model_delete', methods: ["DELETE"])]
     public function delete(FacturationModel $facturationModel, Request $request, DeleteService $deleteService): JsonResponse
     {
+        $this->addHistory(EService::FACTURATION_MODEL, EAction::DELETE, $facturationModel);
+
+        $data = $request->toArray();
+        if (isset($data['force']) && $data['force'] === true) {
+            $entityManager->remove($facturationModel);
+
+
+        } else {
+            $facturationModel
+                ->setStatus("off")
+            ;
+
+            $entityManager->persist($facturationModel);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }

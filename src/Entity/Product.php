@@ -20,24 +20,25 @@ class Product
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product', 'base'])]
     private ?int $id = null;
 
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product', 'base'])]
     private ?int $quantity = null;
 
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product', 'base'])]
+
     private ?float $price = null;
 
     #[ORM\Column]
-    #[Groups(['product'])]
+    #[Groups(['product', 'base'])]
     private ?float $priceUnit = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['product'])]
+    #[Groups(['product', 'contrat'])]
     private ?ProductType $type = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]

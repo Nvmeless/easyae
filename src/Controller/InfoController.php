@@ -3,8 +3,11 @@
 namespace App\Controller;
 
 use App\Entity\Info;
+use App\enum\EAction;
+use App\enum\EService;
 use App\Repository\InfoRepository;
 use App\Repository\InfoTypeRepository;
+use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,6 +27,8 @@ use Symfony\Bundle\SecurityBundle\Security;
 
 class InfoController extends AbstractController
 {
+
+    use HistoryTrait;
     private $user;
 
     public function __construct(Security $security)
@@ -35,6 +40,9 @@ class InfoController extends AbstractController
     #[IsGranted("ROLE_USER", message: "Vous n'avez pas les droits nécéssaires pour accéder a cette route.")]
     public function getAll(InfoRepository $infoRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::INFO, EAction::READ);
+
+        $idCache = "getAllAccounts";
         $idCache = "getAllInfos";
         $infoJson = $cache->get($idCache, function (ItemInterface $item) use ($infoRepository, $serializer) {
             $item->tag("info");
@@ -54,6 +62,8 @@ class InfoController extends AbstractController
     #[Route(path: '/{id}', name: 'api_info_show', methods: ["GET"])]
     public function get(Info $info, SerializerInterface $serializer): JsonResponse
     {
+        $this->addHistory(EService::INFO, EAction::READ);
+
         // $infoList = $infoRepository->find($id);
 
         $infoJson = $serializer->serialize($info, 'json', ['groups' => "info"]);
@@ -66,6 +76,7 @@ class InfoController extends AbstractController
 
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, InfoTypeRepository $infoTypeRepository, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::INFO, EAction::CREATE);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
@@ -93,6 +104,7 @@ class InfoController extends AbstractController
     #[Route(path: "/{id}", name: 'api_info_edit', methods: ["PATCH"])]
     public function update(TagAwareCacheInterface $cache, Info $info, UrlGeneratorInterface $urlGenerator, Request $request, InfoTypeRepository $infoTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        $this->addHistory(EService::INFO, EAction::UPDATE, $info);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
@@ -120,6 +132,16 @@ class InfoController extends AbstractController
     #[Route(path: "/{id}", name: 'api_info_delete', methods: ["DELETE"])]
     public function delete(Info $info, Request $request, DeleteService $deleteService): JsonResponse
     {
+        $this->addHistory(EService::INFO, EAction::DELETE, $info);
+
+        $data = $request->toArray();
+        if (isset($data['force']) && $data['force'] === true) {
+            $entityManager->remove($info);
+        } else {
+            $info
+                ->setStatus("off")
+            ;
+            $entityManager->persist($info);
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }

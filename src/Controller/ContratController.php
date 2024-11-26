@@ -4,6 +4,10 @@ namespace App\Controller;
 
 use DateTime;
 use App\Entity\User;
+use App\enum\EAction;
+use App\enum\EService;
+use App\Repository\ContratTypeRepository;
+use App\Repository\ClientRepository;
 use App\Entity\Contrat;
 use App\Service\DeleteService;
 use App\Repository\UserRepository;
@@ -13,6 +17,10 @@ use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\ContratTypeRepository;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use App\Traits\HistoryTrait;
+use DateTime;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,6 +33,10 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 #[Route('/api/contrat')]
 class ContratController extends AbstractController
 {
+
+
+    use HistoryTrait;
+
     private $user;
 
     public function __construct(Security $security)
@@ -32,9 +44,12 @@ class ContratController extends AbstractController
         $this->user = $security->getUser();
     }
 
+
     #[Route(name: 'api_contrat_index', methods: ["GET"])]
     public function getAll(ContratRepository $contratRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
+        $this->addHistory(EService::CONTRAT, EAction::READ);
+
         $idCache = "getAllContrats";
         // $contratList = $contratRepository->findAll();
         // $contratJson = $serializer->serialize($contratList, 'json', ['groups' => "contrat"]);
@@ -65,6 +80,9 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_show', methods: ["GET"])]
     public function get(Contrat $contrat, SerializerInterface $serializer): JsonResponse
     {
+
+        $this->addHistory(EService::CONTRAT, EAction::READ);
+
         $contratJson = $serializer->serialize($contrat, 'json', ['groups' => "contrat"]);
 
         return new JsonResponse($contratJson, JsonResponse::HTTP_OK, [], true);
@@ -73,9 +91,13 @@ class ContratController extends AbstractController
     #[Route(name: 'api_contrat_new', methods: ["POST"])]
     public function create(Request $request, clientRepository $clientRepository, ContratTypeRepository $typeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+
+        $this->addHistory(EService::CONTRAT, EAction::CREATE);
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
+
 
         $data = $request->toArray();
         $contrat = $serializer->deserialize($request->getContent(), Contrat::class, 'json', []);
@@ -103,10 +125,15 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_edit', methods: ["PATCH"])]
     public function update(Contrat $contrat, UrlGeneratorInterface $urlGenerator, Request $request, clientRepository $clientRepository, ContratTypeRepository $typeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+
+        $this->addHistory(EService::CONTRAT, EAction::UPDATE, $contrat);
+
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
          
+
         $data = $request->toArray();
         if (isset($data['client'])) {
             $client = $clientRepository->find($data["client"]);
@@ -142,8 +169,19 @@ class ContratController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_delete', methods: ["DELETE"])]
     public function delete(Contrat $contrat, Request $request, DeleteService $deleteService): JsonResponse
     {
+
+        $this->addHistory(EService::CONTRAT, EAction::DELETE, $contrat);
+
+        $data = $request->toArray();
+        if (isset($data['force']) && $data['force'] === true) {
+            $entityManager->remove($contrat);
+        } else {
+            $contrat->setStatus("off");
+            $entityManager->persist($contrat);
+
         if (!$this->user) {
             return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+
         }
 
         $data = $request->toArray();

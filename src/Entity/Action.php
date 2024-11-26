@@ -2,42 +2,46 @@
 
 namespace App\Entity;
 
+use App\Entity\Traits\StatisticsPropertiesTrait;
 use App\Repository\ActionRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ActionRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 class Action
 {
+
+    use StatisticsPropertiesTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['action'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['action'])]
     private ?string $name = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    private ?\DateTimeInterface $createdAt = null;
-
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    private ?\DateTimeInterface $updatedAt = null;
-
-    #[ORM\Column(length: 24)]
-    private ?string $status = null;
+    /**
+     * @var Collection<int, Service>
+     */
+    #[ORM\ManyToMany(targetEntity: Service::class, mappedBy: 'available')]
+    private Collection $services;
 
     /**
      * @var Collection<int, History>
      */
-    #[ORM\ManyToMany(targetEntity: History::class, inversedBy: 'actions')]
-    private Collection $history;
+    #[ORM\OneToMany(targetEntity: History::class, mappedBy: 'action')]
+    private Collection $histories;
 
     public function __construct()
     {
-        $this->history = new ArrayCollection();
+        $this->services = new ArrayCollection();
+        $this->histories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -57,38 +61,29 @@ class Action
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeInterface
+    /**
+     * @return Collection<int, Service>
+     */
+    public function getServices(): Collection
     {
-        return $this->createdAt;
+        return $this->services;
     }
 
-    public function setCreatedAt(\DateTimeInterface $createdAt): static
+    public function addService(Service $service): static
     {
-        $this->createdAt = $createdAt;
+        if (!$this->services->contains($service)) {
+            $this->services->add($service);
+            $service->addAvailable($this);
+        }
 
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeInterface
+    public function removeService(Service $service): static
     {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(\DateTimeInterface $updatedAt): static
-    {
-        $this->updatedAt = $updatedAt;
-
-        return $this;
-    }
-
-    public function getStatus(): ?string
-    {
-        return $this->status;
-    }
-
-    public function setStatus(string $status): static
-    {
-        $this->status = $status;
+        if ($this->services->removeElement($service)) {
+            $service->removeAvailable($this);
+        }
 
         return $this;
     }
@@ -96,15 +91,16 @@ class Action
     /**
      * @return Collection<int, History>
      */
-    public function getHistory(): Collection
+    public function getHistories(): Collection
     {
-        return $this->history;
+        return $this->histories;
     }
 
     public function addHistory(History $history): static
     {
-        if (!$this->history->contains($history)) {
-            $this->history->add($history);
+        if (!$this->histories->contains($history)) {
+            $this->histories->add($history);
+            $history->setAction($this);
         }
 
         return $this;
@@ -112,7 +108,12 @@ class Action
 
     public function removeHistory(History $history): static
     {
-        $this->history->removeElement($history);
+        if ($this->histories->removeElement($history)) {
+            // set the owning side to null (unless already changed)
+            if ($history->getAction() === $this) {
+                $history->setAction(null);
+            }
+        }
 
         return $this;
     }
