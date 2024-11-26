@@ -8,8 +8,9 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
 use Faker\Generator;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
-class ServiceFixtures extends Fixture
+class ServiceFixtures extends Fixture implements DependentFixtureInterface
 {
     public const PREFIX = "service#";
 
@@ -22,6 +23,7 @@ class ServiceFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
 
         foreach (EService::cases() as $item) {
@@ -34,11 +36,25 @@ class ServiceFixtures extends Fixture
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus("on");
+                ->setName($this->faker->numerify('service-###'))
+                ->setUpdatedAt($dateCreated)
+                ->setCreatedAt($dateUpdated)
+                ->setStatus("on")
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
+            ;
 
             $manager->persist($service);
             $this->addReference(self::PREFIX . $item->value, $service);
         }
 
         $manager->flush();
+    }
+
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
+        ];
     }
 }

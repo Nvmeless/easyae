@@ -3,8 +3,12 @@
 namespace App\Controller;
 
 use App\Entity\Contact;
+
 use App\enum\EAction;
 use App\enum\EService;
+
+use App\Entity\User;
+
 use App\Repository\ContactRepository;
 use App\Traits\HistoryTrait;
 use Doctrine\ORM\EntityManagerInterface;
@@ -19,12 +23,22 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use App\Service\DeleteService;
 
 #[Route('/api/contact')]
 class ContactController extends AbstractController
 {
 
+
     use HistoryTrait;
+
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
 
     #[Route(name: 'api_contact_index', methods: ["GET"])]
     #[IsGranted("ROLE_ADMIN", message: "MESSAGE CONTACT")]
@@ -60,13 +74,21 @@ class ContactController extends AbstractController
     #[Route(name: 'api_contact_new', methods: ["POST"])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+
         $this->addHistory(EService::CONTACT, EAction::CREATE);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
         $contact = $serializer->deserialize($request->getContent(), Contact::class, 'json');
 
         $contact->setStatus("on")
             ->setCreatedAt(new \DateTime())
-            ->setUpdatedAt(new \DateTime());
+            ->setUpdatedAt(new \DateTime())
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
+        ;
 
         $errors = $validator->validate($contact);
         if (count($errors) > 0) {
@@ -89,10 +111,18 @@ class ContactController extends AbstractController
         Request                $request,
         SerializerInterface    $serializer,
         EntityManagerInterface $entityManager,
+
         UrlGeneratorInterface  $urlGenerator
     ): JsonResponse
     {
         $this->addHistory(EService::CONTACT, EAction::UPDATE, $contact);
+
+        UrlGeneratorInterface $urlGenerator
+    ): JsonResponse {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
 
         $serializer->deserialize(
             $request->getContent(),
@@ -101,7 +131,10 @@ class ContactController extends AbstractController
             [AbstractNormalizer::OBJECT_TO_POPULATE => $contact]
         );
 
-        $contact->setUpdatedAt(new \DateTime());
+        $contact->setUpdatedAt(new \DateTime())
+            ->setUpdatedBy($this->user->getId())
+        ;
+
         $entityManager->flush();
         $cache->invalidateTags(["contact"]);
 
@@ -116,8 +149,9 @@ class ContactController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_contact_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, Contact $contact, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(Contact $contact, Request $request, DeleteService $deleteService): JsonResponse
     {
+
         $this->addHistory(EService::CONTACT, EAction::DELETE, $contact);
 
         $data = $request->toArray();
@@ -129,12 +163,30 @@ class ContactController extends AbstractController
             $contact
                 ->setStatus("off");
             $entityManager->persist($contact);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+
         }
 
-        $entityManager->flush();
-        $cache->invalidateTags(["contact"]);
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($contact, $data, 'contact');
+    }
+
 
 
         return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+
+    #[Route(path: '/{user}', name: 'api_contact_by_user_show', methods: ["GET"])]
+    public function getContactsByUser(User $user, SerializerInterface $serializer, ContactRepository $contactRepository): JsonResponse
+    {
+        $contactList = $contactRepository->findBy(["user"=> $user]);
+        $contactByUserJson = $serializer->serialize($contactList, 'json', ['groups' => "contact"]);
+        return new JsonResponse($contactByUserJson, JsonResponse::HTTP_OK, [], true);
+
     }
+
+
+
+
 }

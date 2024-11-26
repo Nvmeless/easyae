@@ -7,8 +7,9 @@ use Faker\Generator;
 use App\Entity\InfoType;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
-class InfoTypeFixtures extends Fixture
+class InfoTypeFixtures extends Fixture implements DependentFixtureInterface
 {
     
     public const PREFIX = "infoType";
@@ -22,6 +23,7 @@ class InfoTypeFixtures extends Fixture
     }
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
        
        for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
@@ -32,7 +34,9 @@ class InfoTypeFixtures extends Fixture
         $infoType->setInfo("Personal Info ");
         $infoType->setCreatedAt($dateCreated);
         $infoType->setUpdatedAt($dateUpdated);
-        $infoType->setStatus('on')
+        $infoType->setStatus('on');
+        $infoType->setCreatedBy($adminUser->getId());
+        $infoType->setUpdatedBy($adminUser->getId());
        ;
        $manager->persist($infoType);
        $this->addReference(self::PREFIX . $i, $infoType);
@@ -40,5 +44,12 @@ class InfoTypeFixtures extends Fixture
     
 
         $manager->flush();
+    }
+    
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
+        ];
     }
 }

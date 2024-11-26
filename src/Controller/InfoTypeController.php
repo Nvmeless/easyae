@@ -17,11 +17,20 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
+
 #[Route('/api/info-type')]
 class InfoTypeController extends AbstractController
 {
 
     use HistoryTrait;
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
 
     #[Route(name: 'api_InfoType_index', methods: ["GET"])]
     public function getAll(InfoTypeRepository $infoTypeRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
@@ -35,7 +44,6 @@ class InfoTypeController extends AbstractController
             $infoTypeJson = $serializer->serialize($infoTypeList, 'json', ['groups' => "infoType"]);
             return $infoTypeJson;
         });
-
 
         return new JsonResponse($infoTypeJson, JsonResponse::HTTP_OK, [], true);
     }
@@ -55,7 +63,16 @@ class InfoTypeController extends AbstractController
     {
         $this->addHistory(EService::INFO_TYPE, EAction::CREATE);
      
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $infoType = $serializer->deserialize($request->getContent(), InfoType::class, 'json', []);
+        $infoType
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
+        ;
+
         $entityManager->persist($infoType);
         $entityManager->flush();
         $cache->invalidateTags(["infoType"]);
@@ -69,11 +86,16 @@ class InfoTypeController extends AbstractController
         $this->addHistory(EService::INFO_TYPE, EAction::UPDATE, $infoType);
 
         $data = $request->toArray();
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
+        $data = $request->toArray();
 
         $updatedInfoType = $serializer->deserialize($request->getContent(), InfoType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $infoType]);
         $updatedInfoType
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
         $entityManager->persist($updatedInfoType);
         $entityManager->flush();
@@ -82,6 +104,7 @@ class InfoTypeController extends AbstractController
         $location = $urlGenerator->generate("api_account_show", ['id' => $updatedInfoType->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
         return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT, ["Location" => $location]);
     }
+
     #[Route(path: "/{id}", name: 'api_infoType_delete', methods: ["DELETE"])]
     public function delete( TagAwareCacheInterface $cache,InfoType $infoType,UrlGeneratorInterface $urlGenerator, Request $request,SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
@@ -99,11 +122,13 @@ class InfoTypeController extends AbstractController
             ;
 
             $entityManager->persist($infoType);
+    public function delete(InfoType $infoType, Request $request, DeleteService $deleteService): JsonResponse
+    {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
-
-        $entityManager->flush();
-        $cache->invalidateTags(["infoType"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($infoType, $data, 'infoType');
     }
-
 }

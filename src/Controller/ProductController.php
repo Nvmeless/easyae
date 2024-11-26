@@ -22,6 +22,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/product')]
 
@@ -31,6 +33,14 @@ class ProductController extends AbstractController
     use HistoryTrait;
 
     private const EntityName = "Product";
+
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
+
 
     #[Route(name: 'api_product_index', methods: ['GET'])]
     #[IsGranted("ROLE_USER", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
@@ -65,7 +75,13 @@ class ProductController extends AbstractController
     #[Route(name: 'api_product_new', methods: ['POST'])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, ProductTypeRepository $productTypeRepository, QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+
         $this->addHistory(EService::PRODUCT, EAction::CREATE);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
 
         $data = $request->toArray();
         $type = $productTypeRepository->find($data['type']);
@@ -74,7 +90,10 @@ class ProductController extends AbstractController
         $product = $serializer->deserialize($request->getContent(), Product::class, 'json', []);
         $product
             ->setType($type)->setStatus("on")
-            ->setQuantityType($quantityType)->setStatus("on");
+            ->setQuantityType($quantityType)->setStatus("on")
+            ->setCreatedBy($this->user->getId())    
+            ->setUpdatedBy($this->user->getId())
+        ;
 
         $errors = $validator->validate($product);
         if (count($errors) > 0) {
@@ -92,7 +111,13 @@ class ProductController extends AbstractController
     #[Route(path: '/{id}', name: 'api_product_edit', methods: ['PATCH'])]
     public function update(TagAwareCacheInterface $cache, Product $product, UrlGeneratorInterface $urlGenerator, Request $request, ProductTypeRepository $productTypeRepository, QuantityTypeRepository $quantityTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+
         $this->addHistory(EService::PRODUCT, EAction::UPDATE, $product);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
 
         $data = $request->toArray();
         
@@ -110,6 +135,7 @@ class ProductController extends AbstractController
             ->setType($type ?? $updatedProduct->getType())
             ->setQuantityType($quantityType ?? $updatedProduct->getQuantityType())
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $entityManager->persist($updatedProduct);
@@ -123,8 +149,9 @@ class ProductController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_product_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, Product $product, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(Product $product, Request $request, DeleteService $deleteService): JsonResponse
     {
+
         $this->addHistory(EService::PRODUCT, EAction::DELETE, $product);
 
         $data = $request->toArray();
@@ -138,13 +165,13 @@ class ProductController extends AbstractController
             ;
 
             $entityManager->persist($product);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+
         }
 
-
-
-        $entityManager->flush();
-        $cache->invalidateTags(['product']);
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($product, $data, 'product');
     }
 }

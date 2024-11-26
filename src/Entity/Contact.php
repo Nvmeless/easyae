@@ -22,7 +22,7 @@ class Contact
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['client'])]
+    #[Groups(['client', 'contact'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 15)]
@@ -45,6 +45,10 @@ class Contact
     #[Groups(['contact'])]
 
     private Collection $fonctions;
+
+    #[ORM\ManyToOne(inversedBy: 'contacts')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?User $user = null;
 
 
     public function __construct()
@@ -122,6 +126,18 @@ class Contact
                 $fonction->setContact(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): static
+    {
+        $this->user = $user;
 
         return $this;
     }

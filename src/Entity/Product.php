@@ -29,6 +29,7 @@ class Product
 
     #[ORM\Column]
     #[Groups(['product', 'base'])]
+
     private ?float $price = null;
 
     #[ORM\Column]
@@ -37,7 +38,7 @@ class Product
 
     #[ORM\ManyToOne(inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['product'])]
+    #[Groups(['product', 'contrat'])]
     private ?ProductType $type = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
@@ -49,6 +50,10 @@ class Product
      */
     #[ORM\ManyToMany(targetEntity: Contrat::class, mappedBy: 'products')]
     private Collection $contrats;
+
+    #[ORM\Column]
+    #[Groups(['product'])]
+    private ?float $fees = null;
 
     public function __construct()
     {
@@ -140,6 +145,18 @@ class Product
         if ($this->contrats->removeElement($contrat)) {
             $contrat->removeProduct($this);
         }
+
+        return $this;
+    }
+
+    public function getFees(): ?float
+    {
+        return $this->fees;
+    }
+
+    public function setFees(float $fees): static
+    {
+        $this->fees = $fees;
 
         return $this;
     }

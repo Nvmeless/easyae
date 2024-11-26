@@ -10,6 +10,7 @@ use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Generator;
 use Faker\Factory;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
 class HistoryFixtures extends Fixture implements DependentFixtureInterface
 {
@@ -34,6 +35,7 @@ class HistoryFixtures extends Fixture implements DependentFixtureInterface
         foreach (EService::cases() as $service) {
             $serviceRefs[] = $servicePrefix . $service->value;
         }
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
 
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
             $dateCreated = $this->faker->dateTimeInInterval('-1 year', '+1 year');
@@ -45,6 +47,8 @@ class HistoryFixtures extends Fixture implements DependentFixtureInterface
             $history->setStatus('on');
             $history->setAction($action);
             $history->setService($service);
+            $history->setCreatedBy($adminUser->getId());
+            $history->setUpdatedBy($adminUser->getId());
             $manager->persist($history);
         }
 
@@ -56,6 +60,10 @@ class HistoryFixtures extends Fixture implements DependentFixtureInterface
         return [
             ActionFixtures::class,
             ServiceFixtures::class,
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
         ];
     }
 }

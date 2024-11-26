@@ -23,6 +23,7 @@ class ProductFixtures extends Fixture implements DependentFixtureInterface
     }
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
         $prefixType = ProductTypeFixtures::PREFIX;
         $typeRefs = [];
@@ -48,9 +49,12 @@ class ProductFixtures extends Fixture implements DependentFixtureInterface
                 ->setQuantity($this->faker->randomDigit())
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
                 ->setStatus($statuses[rand(0, count($statuses) - 1)])
                 ->setPrice($this->faker->randomFloat(2, 10, 100))
-                ->setPriceUnit($this->faker->randomFloat(2, 10, 100));
+                ->setPriceUnit($this->faker->randomFloat(2, 10, 100))
+                ->setFees($this->faker->numberBetween(0, 100));
             $manager->persist($product);
             $this->addReference(self::PREFIX . $i, $product);
         }
@@ -61,9 +65,9 @@ class ProductFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
+            UserFixtures::class,
             ProductTypeFixtures::class,
             QuantityTypeFixtures::class
-
         ];
     }
 

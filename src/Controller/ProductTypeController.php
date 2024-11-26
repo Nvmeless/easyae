@@ -20,6 +20,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/productType')]
 
@@ -27,6 +29,12 @@ class ProductTypeController extends AbstractController
 {
 
     use HistoryTrait;
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
 
     #[Route(name: 'app_product_type_index', methods: ["GET"])]
     #[IsGranted("ROLE_USER", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
@@ -57,9 +65,16 @@ class ProductTypeController extends AbstractController
     #[Route(name: 'api_product_type_new', methods: ["POST"])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, ProductTypeRepository $productTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
+        $data = $request->toArray();
         $productType = $serializer->deserialize($request->getContent(), ProductType::class, 'json', []);
         $productType->setClient($productType)
             ->setStatus("on")
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $errors = $validator->validate($productType);
@@ -83,6 +98,23 @@ class ProductTypeController extends AbstractController
         $this->addHistory(EService::PRODUCT_TYPE, EAction::UPDATE, $productType);
 
         $updatedProductType = $serializer->deserialize($request->getContent(), ProductType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $productType]);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
+        $data = $request->toArray();
+        if (isset($data['productType'])) {
+
+            $productType = $productTypeRepository->find($data["productType"]);
+        }
+
+
+        $updatedProductType = $serializer->deserialize($request->getContent(), ProductType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $productType]);
+        $updatedProductType
+            ->setProductType($client ?? $updatedProductType->getProductType())
+            ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
+        ;
 
         $entityManager->persist($updatedProductType);
         $entityManager->flush();
@@ -95,7 +127,7 @@ class ProductTypeController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_product_type_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, ProductType $productType, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(ProductType $productType, Request $request, DeleteService $deleteService): JsonResponse
     {
         $this->addHistory(EService::PRODUCT_TYPE, EAction::UPDATE, $productType);
 
@@ -110,14 +142,11 @@ class ProductTypeController extends AbstractController
             ;
 
             $entityManager->persist($productType);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
-
-
-        $entityManager->flush();
-        $cache->invalidateTags(["productType"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($productType, $data, 'productType');
     }
-
-
 }

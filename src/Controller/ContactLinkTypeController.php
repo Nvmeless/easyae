@@ -16,20 +16,27 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Contracts\Cache\ItemInterface;
-
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use App\Service\DeleteService;
 
 #[Route('/api/contact-link-type')]
 
 class ContactLinkTypeController extends AbstractController
 {
 
+
     use HistoryTrait;
 
+    private $user;
+
+
     public function __construct(
-        private readonly TagAwareCacheInterface $cache
-    )
-    {}
+        private readonly TagAwareCacheInterface $cache,
+        Security $security
+    ) {
+        $this->user = $security->getUser();
+    }
 
     #[Route(name: 'api_contact_link_type_index', methods: ["GET"])]
     public function getAll(ContactLinkTypeRepository $contactLinkTypeRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
@@ -62,15 +69,19 @@ class ContactLinkTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contact_link_type_edit', methods: ["PATCH"])]
     public function update(ContactLinkType $contactLinkType, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
+
         $this->addHistory(EService::CONTACT_LINK_TYPE, EAction::UPDATE, $contactLinkType);
 
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
+
         $updatedContactLinkType = $serializer->deserialize($request->getContent(), $contactLinkType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $contactLinkType]);
+        $updatedContactLinkType->setUpdatedBy($this->user->getId());
 
         $entityManager->persist($updatedContactLinkType);
         $entityManager->flush();
-
-//        $contactLinkTypeJson = $serializer->serialize($updatedContactLinkType, 'json', ['groups' => "contactLinkType"]);
-
 
         $cache->invalidateTags(["contactLinkType", "client"]);
 
@@ -79,8 +90,9 @@ class ContactLinkTypeController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_contact_link_type_delete', methods: ["DELETE"])]
-    public function delete(ContactLinkType $contactLinkType, Request $request, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+    public function delete(ContactLinkType $contactLinkType, Request $request, DeleteService $deleteService): JsonResponse
     {
+
         $this->addHistory(EService::CONTACT_LINK_TYPE, EAction::DELETE, $contactLinkType);
 
         $data = $request->toArray();
@@ -89,15 +101,13 @@ class ContactLinkTypeController extends AbstractController
         } else {
             $contactLinkType->setStatus("off");
             $entityManager->persist($contactLinkType);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+
         }
 
-        $entityManager->flush();
-
-        $this->cache->invalidateTags(['contactLinkType']);
-
-
-        $cache->invalidateTags(["contactLinkType"]);
-
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($contactLinkType, $data, 'contactLinkType');
     }
 }

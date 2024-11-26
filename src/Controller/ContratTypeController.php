@@ -19,16 +19,26 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/contrat-type')]
+#[IsGranted("ROLE_ADMIN", message: "Vous n'avez pas la permission")]
 
 class ContratTypeController extends AbstractController
 {
 
     use HistoryTrait;
 
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
+
+
     #[Route(name: 'api_contrat_type_index', methods: ["GET"])]
-    #[IsGranted("ROLE_ADMIN", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
     public function getAll(ContratTypeRepository $contratTypeRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
         $this->addHistory(EService::CONTRAT_TYPE, EAction::READ);
@@ -58,10 +68,17 @@ class ContratTypeController extends AbstractController
     #[Route(name: 'api_contrat_type_new', methods: ["POST"])]
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+
         $this->addHistory(EService::CONTRAT_TYPE, EAction::CREATE);
 
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
         $contratType = $serializer->deserialize($request->getContent(), ContratType::class, 'json', []);
-        $contratType->setStatus("on");
+        $contratType->setStatus("on")
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId());
 
         $errors = $validator->validate($contratType);
         if (count($errors) > 0) {
@@ -80,11 +97,18 @@ class ContratTypeController extends AbstractController
     #[Route(path: "/{id}", name: 'api_contrat_type_edit', methods: ["PATCH"])]
     public function update(ValidatorInterface $validator, TagAwareCacheInterface $cache, ContratType $contratType, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
+
         $this->addHistory(EService::CONTRAT_TYPE, EAction::UPDATE, $contratType);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
 
         $updatedContratType = $serializer->deserialize($request->getContent(), ContratType::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $contratType]);
         $updatedContratType
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $errors = $validator->validate($contratType);
@@ -102,8 +126,9 @@ class ContratTypeController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_contrat_type_delete', methods: ["DELETE"])]
-    public function delete(ValidatorInterface $validator, TagAwareCacheInterface $cache, ContratType $contratType, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(ContratType $contratType, Request $request, DeleteService $deleteService): JsonResponse
     {
+
         $this->addHistory(EService::CONTRAT_TYPE, EAction::DELETE, $contratType);
 
         $data = $request->toArray();
@@ -114,12 +139,13 @@ class ContratTypeController extends AbstractController
                 ->setStatus("off")
             ;
             $entityManager->persist($contratType);
+
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+
         }
 
-        $entityManager->flush();
-
-        $cache->invalidateTags(["contratType"]);
-
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($contratType, $data, 'contratType');
     }
 }

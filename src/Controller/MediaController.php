@@ -49,9 +49,5 @@ class MediaController extends AbstractController
         $jsonFile = $serializer->serialize($media, "json");
         $location = $urlGenerator->generate('app_media', ["media" => $media->getId(), UrlGeneratorInterface::ABSOLUTE_URL]);
         return new JsonResponse($jsonFile, Response::HTTP_CREATED, ["Location" => $location], true);
-        return $this->json([
-            'message' => 'Welcome to your new controller!',
-            'path' => 'src/Controller/MediaController.php',
-        ]);
     }
 }

@@ -17,12 +17,20 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/fonction')]
 class FonctionController extends AbstractController
 {
 
     use HistoryTrait;
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
 
     #[Route(name: 'app_fonction', methods: ["GET"])]
     public function getAll(FonctionRepository $fonctionRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
@@ -52,9 +60,15 @@ class FonctionController extends AbstractController
     public function create(Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
         $this->addHistory(EService::FONCTION, EAction::CREATE);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
         $fonction = $serializer->deserialize($request->getContent(), Fonction::class, 'json', []);
-        $fonction->setStatus("on");
+        $fonction->setStatus("on")
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
+        ;
 
         $entityManager->persist($fonction);
         $entityManager->flush();
@@ -69,9 +83,12 @@ class FonctionController extends AbstractController
     public function update(Fonction $fonction, UrlGeneratorInterface $urlGenerator, Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
     {
         $this->addHistory(EService::FONCTION, EAction::UPDATE, $fonction);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
         $updatedFonction = $serializer->deserialize($request->getContent(), Fonction::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $fonction]);
-        $updatedFonction->setStatus("on");
+        $updatedFonction->setStatus("on")->setUpdatedBy($this->user->getId());
 
         $entityManager->persist($updatedFonction);
         $entityManager->flush();
@@ -83,7 +100,7 @@ class FonctionController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_fonction_delete', methods: ["DELETE"])]
-    public function delete(Fonction $fonction, Request $request, EntityManagerInterface $entityManager, TagAwareCacheInterface $cache): JsonResponse
+     public function delete(Fonction $fonction, Request $request, DeleteService $deleteService): JsonResponse
     {
         $this->addHistory(EService::FONCTION, EAction::DELETE, $fonction);
 
@@ -93,12 +110,11 @@ class FonctionController extends AbstractController
         } else {
             $fonction->setStatus("off");
             $entityManager->persist($fonction);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
-        $entityManager->flush();
-
-        $cache->invalidateTags(["fonction"]);
-
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($fonction, $data, 'fonction');
     }
 }

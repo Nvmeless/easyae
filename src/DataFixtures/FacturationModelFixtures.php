@@ -4,15 +4,13 @@ namespace App\DataFixtures;
 
 use Faker\Factory;
 use Faker\Generator;
-
 use App\Entity\FacturationModel;
-
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 
-class FacturationModelFixtures extends Fixture
+class FacturationModelFixtures extends Fixture implements DependentFixtureInterface
 {
-
     public const PREFIX = "facturationModel#";
     public const POOL_MIN = 0;
     public const POOL_MAX = 10;
@@ -26,6 +24,7 @@ class FacturationModelFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
+        $adminUser = $this->getReference(UserFixtures::ADMIN_REF);
         $now = new \DateTime();
 
         for ($i = self::POOL_MIN; $i < self::POOL_MAX; $i++) {
@@ -39,11 +38,20 @@ class FacturationModelFixtures extends Fixture
                 ->setCreatedAt($dateCreated)
                 ->setUpdatedAt($dateUpdated)
                 ->setStatus('on')
+                ->setCreatedBy($adminUser->getId())
+                ->setUpdatedBy($adminUser->getId())
             ;
             // $account->setCreatedAt(new \DateTime());
             $manager->persist($facturationModel);
             $this->addReference(name: self::PREFIX . $i, object: $facturationModel);
         }
         $manager->flush();
+    }
+
+    public function getDependencies(): array
+    {
+        return [
+            UserFixtures::class
+        ];
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\AccountRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Entity\Traits\StatisticsPropertiesTrait;
@@ -17,7 +19,7 @@ class Account
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['account'])]
+    #[Groups(['account','info'])]
     private ?int $id = null;
 
     #[Assert\NotBlank(message: "Votre Compte doit avoir un Nom")]
@@ -28,13 +30,25 @@ class Account
     private ?string $name = null;
 
     #[ORM\Column(length: 24)]
-    #[Groups(['account'])]
+    #[Groups(['account','info'])]
     private ?string $status = null;
 
     #[ORM\ManyToOne(inversedBy: 'accounts')]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['account'])]
     private ?Client $client = null;
+
+    /**
+     * @var Collection<int, Info>
+     */
+    #[ORM\ManyToMany(targetEntity: Info::class, mappedBy: 'account')]
+    #[Groups(['account','info'])]
+    private Collection $info;
+
+    public function __construct()
+    {
+        $this->info = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -73,6 +87,33 @@ class Account
     public function setClient(?Client $client): static
     {
         $this->client = $client;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Info>
+     */
+    public function getInfo(): Collection
+    {
+        return $this->info;
+    }
+
+    public function addInfo(Info $info): static
+    {
+        if (!$this->info->contains($info)) {
+            $this->info->add($info);
+            $info->addAccount($this);
+        }
+
+        return $this;
+    }
+
+    public function removeInfo(Info $info): static
+    {
+        if ($this->info->removeElement($info)) {
+            $info->removeAccount($this);
+        }
 
         return $this;
     }

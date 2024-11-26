@@ -20,7 +20,8 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
-
+use App\Service\DeleteService;
+use Symfony\Bundle\SecurityBundle\Security;
 
 #[Route('/api/info')]
 
@@ -28,22 +29,31 @@ class InfoController extends AbstractController
 {
 
     use HistoryTrait;
+    private $user;
+
+    public function __construct(Security $security)
+    {
+        $this->user = $security->getUser();
+    }
 
     #[Route(name: 'api_info_index', methods: ["GET"])]
-    #[IsGranted("ROLE_USER", message: "Hanhanhaaaaan vous n'avez pas dit le mot magiiiiqueeuuuuuh")]
+    #[IsGranted("ROLE_USER", message: "Vous n'avez pas les droits nécéssaires pour accéder a cette route.")]
     public function getAll(InfoRepository $infoRepository, SerializerInterface $serializer, TagAwareCacheInterface $cache): JsonResponse
     {
         $this->addHistory(EService::INFO, EAction::READ);
 
         $idCache = "getAllAccounts";
+        $idCache = "getAllInfos";
         $infoJson = $cache->get($idCache, function (ItemInterface $item) use ($infoRepository, $serializer) {
             $item->tag("info");
             $item->tag("type");
+            $item->tag("client");
+            $item->tag("account");
             $infoList = $infoRepository->findAll();
             $infoJson = $serializer->serialize($infoList, 'json', ['groups' => "info"]);
 
             return $infoJson;
-
+            
         });
 
 
@@ -67,12 +77,17 @@ class InfoController extends AbstractController
     public function create(ValidatorInterface $validator, TagAwareCacheInterface $cache, Request $request, SerializerInterface $serializer, InfoTypeRepository $infoTypeRepository, EntityManagerInterface $entityManager): JsonResponse
     {
         $this->addHistory(EService::INFO, EAction::CREATE);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
         $data = $request->toArray();
         $infoType = $infoTypeRepository->find($data["type"]);
         $info = $serializer->deserialize($request->getContent(), Info::class, 'json', []);
         $info->setType($infoType)
             ->setStatus("on")
+            ->setCreatedBy($this->user->getId())
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $errors = $validator->validate($info);
@@ -90,6 +105,9 @@ class InfoController extends AbstractController
     public function update(TagAwareCacheInterface $cache, Info $info, UrlGeneratorInterface $urlGenerator, Request $request, InfoTypeRepository $infoTypeRepository, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
     {
         $this->addHistory(EService::INFO, EAction::UPDATE, $info);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
         $data = $request->toArray();
         if (isset($data['type'])) {
@@ -101,6 +119,7 @@ class InfoController extends AbstractController
         $updatedInfo
             ->setType($type ?? $updatedInfo->getType())
             ->setStatus("on")
+            ->setUpdatedBy($this->user->getId())
         ;
 
         $entityManager->persist($updatedInfo);
@@ -111,7 +130,7 @@ class InfoController extends AbstractController
     }
 
     #[Route(path: "/{id}", name: 'api_info_delete', methods: ["DELETE"])]
-    public function delete(TagAwareCacheInterface $cache, Info $info, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(Info $info, Request $request, DeleteService $deleteService): JsonResponse
     {
         $this->addHistory(EService::INFO, EAction::DELETE, $info);
 
@@ -123,9 +142,11 @@ class InfoController extends AbstractController
                 ->setStatus("off")
             ;
             $entityManager->persist($info);
+        if (!$this->user) {
+            return new JsonResponse(['message' => 'User not authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
         }
-        $entityManager->flush();
-        $cache->invalidateTags(["info"]);
-        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+
+        $data = $request->toArray();
+        return $deleteService->deleteEntity($info, $data, 'info');
     }
 }
