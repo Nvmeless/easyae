@@ -58,11 +58,11 @@ class ClientController extends AbstractController
     }
 
     #[Route(path: '/{id}/carnet-account', name: 'api_client_carnet_account', methods: ["GET"])]
-    public function getCarnetAccount(Client $client = null, SerializerInterface $serializer, AccountRepository $accountRepository)
+    public function getCarnetAccount(Client $id , SerializerInterface $serializer, AccountRepository $accountRepository)
     {
-        $accountsList = $accountRepository->findBy(['client' => $client->getId()]);
-        $accountsJson = $serializer->serialize($accountsList, 'json', ['groups' => ["account"]]);
-
+        $accountsList = $accountRepository->findBy(['client' => $id->getId()]);
+        $accountsJson = $serializer->serialize($accountsList, 'json', ['groups' => "account"]);
+        
         return new JsonResponse($accountsJson, JsonResponse::HTTP_OK, [], true);
     }
 
